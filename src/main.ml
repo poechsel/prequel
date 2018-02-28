@@ -1,3 +1,5 @@
+open Ast;;
+
 let _ = print_string "hello_world\n"
 let parse_line lexbuf = 1;;
 let compute ast = 1;;
