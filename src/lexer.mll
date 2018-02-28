@@ -13,6 +13,7 @@ let incr_linenum lexbuf =
 rule token = parse
 | [' ' '\t'] { token lexbuf }
 | '\n' {incr_linenum lexbuf; token lexbuf}
+| ";"       { ENDLINE }
 | "SELECT"  { SELECT }
 | "WHERE"   { WHERE }
 | "FROM"    { FROM }
@@ -36,4 +37,4 @@ rule token = parse
 | ","       { COMA }
 | "("       { LPAR }
 | ")"       { RPAR }
-| [A-Za-z][A-Za-z0-9]+ { ID(s)}
+| ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']* as s { ID(s)}
