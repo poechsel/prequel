@@ -1,28 +1,30 @@
-type attribute = string
+type attribute = string option * string
+type attribute_renamed = attribute * string option
+
 
 type binop = 
   | And
   | Or
 
 type compop =
-  | LEQ
-  | EQ
-  | NEQ
-  | GEQ
-  | LT
-  | GT
+  | Leq
+  | Eq
+  | Neq
+  | Geq
+  | Lt
+  | Gt
 
 type relation =
-  | AstSubQuery of ast
+  | AstSubQuery of query
   | AstTable of string
 
 and cond =
   | AstBinOp of binop * cond * cond
   | AstCompOp of compop * attribute * attribute
-  | AstIn of attribute * ast
-  | AstNotIn of attribute * ast
+  | AstIn of attribute * query
+  | AstNotIn of attribute * query
 
-and ast =
-  | AstSelect of attribute list * relation list * cond * ast option
-  | AstMinus of ast * ast
-  | AstUnion of ast * ast
+and query =
+  | AstSelect of attribute_renamed list * relation list * cond * cond option
+  | AstMinus of query * query
+  | AstUnion of query * query
