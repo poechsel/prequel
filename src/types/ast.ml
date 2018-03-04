@@ -14,17 +14,22 @@ type compop =
   | Lt
   | Gt
 
-type relation =
-  | AstSubQuery of query
+type 'a relation =
+  | AstSubQuery of 'a query
   | AstTable of string
 
-and cond =
+and 'a query =
+  | AstSelect of attribute_renamed list * 'a relation list * 'a * 'a option
+  | AstMinus of 'a query * 'a query
+  | AstUnion of 'a query * 'a query
+
+type cond =
   | AstBinOp of binop * cond * cond
   | AstCompOp of compop * attribute * attribute
-  | AstIn of attribute * query
-  | AstNotIn of attribute * query
+  | AstIn of attribute * cond query
+  | AstNotIn of attribute * cond query
 
-and query =
-  | AstSelect of attribute_renamed list * relation list * cond * cond option
-  | AstMinus of query * query
-  | AstUnion of query * query
+type disj = 
+  | AstCompOp of compop * attribute * attribute
+  | AstIn of attribute * disj list list query
+  | AstNotIn of attribute * disj list list query

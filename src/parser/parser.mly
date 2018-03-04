@@ -8,7 +8,7 @@ open Ast
 %token LPAR RPAR AS ENDLINE
 
 %start main
-%type<Ast.query> main
+%type<Ast.cond Ast.query> main
 %%
 
 main:
