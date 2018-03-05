@@ -48,7 +48,10 @@ let repl () =
 
 
 let _ = 
-  let (module F) = MetaQuery.feed_from_query (AlgebraTypes.AlgUnion (AlgebraTypes.AlgInput "bar", AlgebraTypes.AlgInput "foo"))
+  let (module F) = MetaQuery.feed_from_query (AlgebraTypes.AlgUnion 
+                                                (AlgebraTypes.AlgInput "bar", 
+                                                 AlgebraTypes.AlgInput "foo")
+                                             )
   in let rec aux () = 
        match (F.FeedHandler.next F.this) with
        | None -> ()
