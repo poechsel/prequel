@@ -3,6 +3,7 @@ open Lexer
 open Parser
 open Errors
 
+open MetaQuery
 
 
 let parse_line lexbuf =
@@ -45,4 +46,14 @@ let repl () =
   in 
   aux ();;
 
-let _ = repl()
+
+let _ = 
+  let (module F) = MetaQuery.feed_from_query (AlgebraTypes.AlgUnion (AlgebraTypes.AlgInput "bar", AlgebraTypes.AlgInput "foo"))
+  in let rec aux () = 
+       match (F.FeedHandler.next F.this) with
+       | None -> ()
+       | Some i -> Printf.printf "%s\n" i; aux ()
+  in aux ()
+  in ()
+
+(* let _ = repl() *)
