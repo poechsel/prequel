@@ -50,11 +50,11 @@ let rec disjunction (query : cond query) : disj list list query =
         ) t2
       ) 
     | AstCompOp(op, a, b) ->
-      [[ AstCompOp(op, a, b) ]]
+      [[ DisjCompOp(op, a, b) ]]
     | AstIn(a, b) ->
-      [[ AstIn(a, disjunction_query b) ]]
+      [[ DisjIn(a, disjunction_query b) ]]
     | AstNotIn(a, b) ->
-      [[ AstNotIn(a, disjunction_query b) ]]
+      [[ DisjNotIn(a, disjunction_query b) ]]
   in
   disjunction_query query
 

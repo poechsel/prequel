@@ -3,7 +3,8 @@ all:
 byte:
 	ocamlbuild -yaccflag -v src/main.byte
 test:
-	ocamlbuild -package oUnit -Is src/ tests/test.byte -r
+	ocamlbuild -package oUnit -Is src/ tests/test.byte -r ;
+	./test.byte
 clean:
 	ocamlbuild -clean
 

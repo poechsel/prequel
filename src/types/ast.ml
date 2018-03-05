@@ -30,6 +30,31 @@ type cond =
   | AstNotIn of attribute * cond query
 
 type disj = 
-  | AstCompOp of compop * attribute * attribute
-  | AstIn of attribute * disj list list query
-  | AstNotIn of attribute * disj list list query
+  | DisjCompOp of compop * attribute * attribute
+  | DisjIn of attribute * (disj list list) query
+  | DisjNotIn of attribute * (disj list list) query
+
+
+
+
+(* only for debug, dead code *)
+let print_disj_form query =
+  let rec print_query query = 
+    match query with
+    | AstSelect(_, _, cond, _) ->
+      print_cond cond
+    | _ -> ()
+  and print_cond cond = 
+    print_string @@ List.fold_left (fun a b ->
+        (match a with "" -> "" | _ -> a ^ " \\/ ") ^
+        (List.fold_left (fun x y ->
+          "(" ^ (match x with "" -> "" | _ -> x ^ " /\\ ") ^ print_attr y ^ ")"
+          ) "" b)
+      ) "" cond
+  and print_attr a =
+    match a with
+    | DisjCompOp(_, (_, a), _) -> a
+    | _ -> ""
+    
+  in 
+  print_query query
