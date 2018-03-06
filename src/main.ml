@@ -49,12 +49,12 @@ let repl () =
 
 
 let _ = 
-  let (module F) = MetaQuery.feed_from_query (AlgebraTypes.AlgProjection ((AlgebraTypes.AlgUnion 
+  let feed = MetaQuery.feed_from_query (AlgebraTypes.AlgProjection ((AlgebraTypes.AlgUnion 
                                                 (AlgebraTypes.AlgInput "test", 
                                                  AlgebraTypes.AlgInput "test")
                                                         ), ["Title1"]))
   in let rec aux () = 
-       match (F.FeedHandler.next F.this) with
+       match feed#next with
        | None -> ()
        | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
   in aux ()

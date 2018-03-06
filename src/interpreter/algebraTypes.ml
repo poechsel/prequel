@@ -19,6 +19,11 @@ module type FeedHandlerInterface = sig
   module FeedHandler : Feed
   val this : FeedHandler.t
 end
-  
-  
-type feed_handler = (module FeedHandlerInterface)
+
+class virtual feed_interface =
+  object
+    method virtual next : feed_result option
+    method virtual headers : string list
+    method virtual reset : unit
+  end
+

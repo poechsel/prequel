@@ -1,23 +1,22 @@
-type t = { name : string; csv: Csv.in_channel ref; file: Pervasives.in_channel }
-type o = string
+class inputCachedFile name =
+  let path' = name ^ ".csv" in
+  let file' = open_in path' in
+  object(self)
+    inherit AlgebraTypes.feed_interface
+    val path = path'
+    val file = file'
+    val mutable csv = Csv.of_channel ?has_header:(Some true) file'
+    
+    method next = 
+      try 
+        Some (Csv.next csv)
+      with End_of_file ->
+        None
 
-let open_feed s =
-  let file = open_in @@ s ^ ".csv" in
-  { name = s ^ ".csv"; file = file;  csv = ref (Csv.of_channel ?has_header:(Some true) file) }
+    method reset = 
+      let _ = Pervasives.seek_in file 0 in
+      csv <- Csv.of_channel ?has_header:(Some true) file
 
-let close_feed t = 
-  ()
-
-
-let next c = 
-  try
-    Some (Csv.next !(c.csv))
-  with End_of_file ->
-    None
-
-let reset c = 
-  let _ = Pervasives.seek_in c.file 0 in
-  c.csv := Csv.of_channel ?has_header:(Some true) c.file 
-
-let headers t = 
-  Csv.Rows.header !(t.csv)
+    method headers =
+      Csv.Rows.header csv
+  end
