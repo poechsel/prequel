@@ -25,12 +25,12 @@ let rec disjunction (query : cond query) : disj list list query =
                )
   and disjunction_relation rel =
     begin
-      match rel with
+      match (fst rel) with
       | AstTable y -> 
         AstTable y
       | AstSubQuery y ->
         AstSubQuery (disjunction_query y)
-    end
+    end, snd rel
   and disjunction_cond cond =
     match cond with
     | AstBinOp(Or, a, b) ->
@@ -77,12 +77,12 @@ let rec remove_or query =
         (List.tl conds)
   and disjunction_relation rel =
     begin
-      match rel with
+      match fst rel with
       | AstTable y -> 
         AstTable y
       | AstSubQuery y ->
         AstSubQuery (disjunction_query y)
-    end
+    end, snd rel
   and disjunction_cond cond =
      List.map (fun x ->
         List.map (fun y -> 

@@ -19,7 +19,7 @@ type 'a relation =
   | AstTable of string
 
 and 'a query =
-  | AstSelect of attribute_renamed list * 'a relation list * 'a 
+  | AstSelect of attribute_renamed list * ('a relation * string option) list * 'a 
   | AstMinus of 'a query * 'a query
   | AstUnion of 'a query * 'a query
 

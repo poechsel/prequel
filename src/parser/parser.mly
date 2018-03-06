@@ -35,6 +35,12 @@ attribute:
 
 
 relation:
+    | relation_atom AS ID
+        { $1, Some $3 }
+    | relation_atom
+        { $1, None }
+
+relation_atom:
     | ID 
         { AstTable $1 }
     | LPAR query RPAR
