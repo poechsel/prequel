@@ -47,7 +47,14 @@ let repl () =
   aux ();;
 
 
+let _ = 
+  let query = "select a from a;" in
+  let lexbuf = Lexing.from_string query in
+  let ast = parse_line lexbuf in
+  TypeChecker.typecheck (ast)
 
+
+(*
 let _ = 
   let feed = MetaQuery.feed_from_query (AlgebraTypes.AlgProjection ((AlgebraTypes.AlgUnion 
                                                 (AlgebraTypes.AlgInput "test", 
@@ -59,7 +66,7 @@ let _ =
        | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
   in aux ()
   in ()
-
+*)
 
 (*
 let _ = 

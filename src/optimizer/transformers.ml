@@ -18,10 +18,15 @@ let rec disjunction (query : cond query) : disj list list query =
     | AstUnion(a, b) ->
       AstUnion(disjunction_query a
               , disjunction_query b)
-    | AstSelect(attrs, rels, cond) ->
+    | AstSelect(attrs, rels, None) ->
       AstSelect(attrs
                , List.map (fun x -> disjunction_relation x) rels
-               , disjunction_cond cond
+               , None 
+               )
+    | AstSelect(attrs, rels, Some cond) ->
+      AstSelect(attrs
+               , List.map (fun x -> disjunction_relation x) rels
+               , Some (disjunction_cond cond)
                )
   and disjunction_relation rel =
     begin
@@ -68,13 +73,16 @@ let rec remove_or query =
     | AstUnion(a, b) ->
       AstUnion(disjunction_query a
               , disjunction_query b)
-    | AstSelect(attrs, rels, conds) ->
+    | AstSelect(attrs, rels, Some conds) ->
       let conds = disjunction_cond conds in
       let rels = List.map (fun x -> disjunction_relation x) rels in
       List.fold_left (fun a b ->
-            AstUnion(a, AstSelect(attrs, rels, b))
-        ) (AstSelect(attrs, rels, (List.hd conds)))
+            AstUnion(a, AstSelect(attrs, rels, Some b))
+        ) (AstSelect(attrs, rels, Some (List.hd conds)))
         (List.tl conds)
+    | AstSelect(attrs, rels, None) ->
+      let rels = List.map (fun x -> disjunction_relation x) rels in
+      AstSelect(attrs, rels, None)
   and disjunction_relation rel =
     begin
       match fst rel with
