@@ -18,14 +18,10 @@ let rec disjunction (query : cond query) : disj list list query =
     | AstUnion(a, b) ->
       AstUnion(disjunction_query a
               , disjunction_query b)
-    | AstSelect(attrs, rels, cond, group_cond) ->
+    | AstSelect(attrs, rels, cond) ->
       AstSelect(attrs
                , List.map (fun x -> disjunction_relation x) rels
                , disjunction_cond cond
-               , (match group_cond with
-                  | None -> None
-                  | Some x -> Some (disjunction_cond x)
-                 )
                )
   and disjunction_relation rel =
     begin
@@ -56,5 +52,49 @@ let rec disjunction (query : cond query) : disj list list query =
     | AstNotIn(a, b) ->
       [[ DisjNotIn(a, disjunction_query b) ]]
   in
+  disjunction_query query
+
+let rec remove_or query = 
+  (* Convert a query where the conditions can have any form
+     to a query where conditions are in disjunctive form 
+    
+     @Param query: the query of type cond query
+  *)
+  let rec disjunction_query query =
+    match query with
+    | AstMinus(a, b) ->
+      AstMinus(disjunction_query a
+              , disjunction_query b)
+    | AstUnion(a, b) ->
+      AstUnion(disjunction_query a
+              , disjunction_query b)
+    | AstSelect(attrs, rels, conds) ->
+      let conds = disjunction_cond conds in
+      let rels = List.map (fun x -> disjunction_relation x) rels in
+      List.fold_left (fun a b ->
+            AstUnion(a, AstSelect(attrs, rels, b))
+        ) (AstSelect(attrs, rels, (List.hd conds)))
+        (List.tl conds)
+  and disjunction_relation rel =
+    begin
+      match rel with
+      | AstTable y -> 
+        AstTable y
+      | AstSubQuery y ->
+        AstSubQuery (disjunction_query y)
+    end
+  and disjunction_cond cond =
+     List.map (fun x ->
+        List.map (fun y -> 
+             match y with
+             | DisjCompOp(op, a, b) ->
+               DisjNOCompOp(op, a, b)
+             | DisjIn(a, b) -> 
+               DisjNOIn(a, disjunction_query b)
+             | DisjNotIn(a, b) -> 
+               DisjNONotIn(a, disjunction_query b)
+           ) x
+       ) cond
+  in 
   disjunction_query query
 

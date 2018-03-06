@@ -48,9 +48,7 @@ relation_list:
 
 query:
     | SELECT attributes_list FROM relation_list WHERE cond 
-        { AstSelect($2, $4, $6, None) }
-    | SELECT attributes_list FROM relation_list WHERE cond GROUP BY cond 
-        { AstSelect($2, $4, $6, Some $9) }
+        { AstSelect($2, $4, $6) }
     | LPAR query RPAR MINUS LPAR query RPAR
         { AstMinus($2, $6) }
     | LPAR query RPAR UNION LPAR query RPAR
