@@ -7,7 +7,11 @@ let naive_compiler query =
     | AstSelect(attributes, tables, None) ->
       let attributes = List.map (fun i -> (fst i)) attributes in
       let (AstTable x, _)::t = tables in
-      AlgProjection(AlgInput(x), attributes)
+      match attributes with
+      | [] ->
+        AlgInput (x)
+      | _ ->
+        AlgProjection(AlgInput(x), attributes)
 
 
   in compile_query query

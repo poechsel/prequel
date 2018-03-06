@@ -55,6 +55,10 @@ relation_list:
         { $1 :: $3 }
 
 query:
+    | SELECT TIMES FROM relation_list WHERE cond 
+        { AstSelect([], $4, Some $6) }
+    | SELECT TIMES FROM relation_list 
+        { AstSelect([], $4, None) }
     | SELECT attributes_list FROM relation_list WHERE cond 
         { AstSelect($2, $4, Some $6) }
     | SELECT attributes_list FROM relation_list 
