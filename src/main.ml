@@ -48,7 +48,7 @@ let repl () =
 
 
 let _ = 
-  let query = "select Title1, Title2 from test;" in
+  let query = "select test.Title1, test.Title2 from test;" in
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
   let alg = Naivecompiler.naive_compiler ast in

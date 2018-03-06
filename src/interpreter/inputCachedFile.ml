@@ -3,6 +3,7 @@ class inputCachedFile name =
   let file' = open_in path' in
   object(self)
     inherit AlgebraTypes.feed_interface
+    val name = name
     val path = path'
     val file = file'
     val mutable csv = Csv.of_channel ?has_header:(Some true) file'
@@ -18,5 +19,5 @@ class inputCachedFile name =
       csv <- Csv.of_channel ?has_header:(Some true) file
 
     method headers =
-      Csv.Rows.header csv
+      List.map (fun i -> Some(name), i) @@ Csv.Rows.header csv
   end

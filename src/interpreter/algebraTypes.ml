@@ -1,6 +1,9 @@
+type header = string option * string
+
+
 type algebra =
   | AlgUnion of algebra * algebra
-  | AlgProjection of algebra * string list
+  | AlgProjection of algebra * header list
   | AlgInput of string (* for input nodes *)
 
 type feed_result = string list
@@ -12,7 +15,7 @@ module type Feed = sig
   val close_feed : t -> unit
   val reset : t -> unit
   val next : t -> (feed_result option) 
-  val headers : t -> string list 
+  val headers : t -> header list 
 end
 
 module type FeedHandlerInterface = sig
@@ -23,7 +26,7 @@ end
 class virtual feed_interface =
   object
     method virtual next : feed_result option
-    method virtual headers : string list
+    method virtual headers : header list
     method virtual reset : unit
   end
 
