@@ -5,6 +5,10 @@ type attribute_renamed = attribute * string option
 type binop = 
   | And
   | Or
+  | Add
+  | Sub
+  | Times
+  | Div
 
 type compop =
   | Leq
@@ -13,6 +17,18 @@ type compop =
   | Geq
   | Lt
   | Gt
+
+type exprop =
+  | Add
+  | Sub
+  | Div
+  | Times
+
+type expression =
+  | AstExprOp of exprop * expression * expression
+  | AstAttribute of attribute
+  | AstNumber of int
+  | AstString of string
 
 type 'a relation =
   | AstSubQuery of 'a query
@@ -25,9 +41,10 @@ and 'a query =
 
 type cond =
   | AstBinOp of binop * cond * cond
-  | AstCompOp of compop * attribute * attribute
-  | AstIn of attribute * cond query
-  | AstNotIn of attribute * cond query
+  | AstCompOp of compop * expression * expression
+  | AstIn of expression * cond query
+  | AstNotIn of expression * cond query
+
 
 type disj = 
   | DisjCompOp of compop * attribute * attribute

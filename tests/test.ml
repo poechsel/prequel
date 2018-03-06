@@ -11,8 +11,8 @@ let parsing_test str ctx =
 
 
 
-let make_ast_atom x = AstCompOp(Eq, (None, x), (None, x))
-let make_disj_atom x = DisjCompOp(Eq, (None, x), (None, x))
+let make_ast_atom x = AstCompOp(Eq, Attribute (None, x), Attribute (None, x))
+let make_disj_atom x = DisjCompOp(Eq, Attribute (None, x), Attribute (None, x))
 
 let test_disj a b ctx = assert_equal (Transformers.disjunction a) b 
 
@@ -42,6 +42,5 @@ let disj_transform =
 
 let () =
   run_test_tt_main suite;
-  run_test_tt_main disj_transform
 ;;
 

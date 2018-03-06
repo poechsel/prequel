@@ -37,4 +37,10 @@ rule token = parse
 | ","       { COMA }
 | "("       { LPAR }
 | ")"       { RPAR }
+| "+"       { ADD }
+| "-"       { SUB }
+| "*"       { TIMES }
+| "/"       { DIV }
+| ['0'-'9']+ as s   { NUMBER(int_of_string s)}
+| '"'[^ '"']*'"' as s   { STRING(s)}
 | ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']* as s { ID(s)}

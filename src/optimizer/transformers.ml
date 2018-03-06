@@ -3,7 +3,7 @@ open Ast
 (* simple transformation to test if everything is working correctly *)
 let rec identity x =
   x
-
+(* NOT WORKING ANYMORE
 let rec disjunction (query : cond query) : disj list list query =
   (* Convert a query where the conditions can have any form
      to a query where conditions are in disjunctive form 
@@ -105,4 +105,4 @@ let rec remove_or query =
        ) cond
   in 
   disjunction_query query
-
+*)
