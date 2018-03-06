@@ -48,10 +48,17 @@ let repl () =
 
 
 let _ = 
-  let query = "select a from a;" in
+  let query = "select Title1, Title2 from test;" in
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
-  TypeChecker.typecheck (ast)
+  let alg = Naivecompiler.naive_compiler ast in
+  let feed = MetaQuery.feed_from_query alg in
+  let rec aux () = 
+       match feed#next with
+       | None -> ()
+       | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
+  in aux ()
+  in ()
 
 
 (*
