@@ -7,6 +7,11 @@ let open_feed (a, b) =
 let close_feed t =
   ()
 
+let headers t = 
+  let (module A : AlgebraTypes.FeedHandlerInterface) = t.a in
+  let (module B : AlgebraTypes.FeedHandlerInterface) = t.b in
+  A.FeedHandler.headers A.this
+
 let next t = 
   let (module A : AlgebraTypes.FeedHandlerInterface) = t.a in
   let (module B : AlgebraTypes.FeedHandlerInterface) = t.b in

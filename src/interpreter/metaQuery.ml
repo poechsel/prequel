@@ -2,7 +2,6 @@ open AlgebraTypes
 
 
 
-
 let rec feed_from_query (query : algebra) : feed_handler = 
   (* convert a query to a feed *)
   match query with
@@ -12,6 +11,13 @@ let rec feed_from_query (query : algebra) : feed_handler =
     (module struct
         module FeedHandler = Union
         let this = Union.open_feed (module_a, module_b)
+      end : FeedHandlerInterface
+    )
+  | AlgProjection(a, keep) ->
+    let module_a = feed_from_query a in
+    (module struct
+        module FeedHandler = Projection
+        let this = Projection.open_feed (module_a, keep)
       end : FeedHandlerInterface
     )
   | AlgInput(str)   -> 

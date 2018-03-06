@@ -10,5 +10,6 @@ build: [
 build-test: [make test]
 depends: [
   "ounit" {test}
+  "csv"
 ]
 

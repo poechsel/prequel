@@ -47,16 +47,35 @@ let repl () =
   aux ();;
 
 
+
 let _ = 
   let (module F) = MetaQuery.feed_from_query (AlgebraTypes.AlgUnion 
-                                                (AlgebraTypes.AlgInput "bar", 
-                                                 AlgebraTypes.AlgInput "foo")
+                                                (AlgebraTypes.AlgInput "test", 
+                                                 AlgebraTypes.AlgInput "test")
                                              )
   in let rec aux () = 
        match (F.FeedHandler.next F.this) with
        | None -> ()
-       | Some i -> Printf.printf "%s\n" i; aux ()
+       | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
   in aux ()
   in ()
+
+
+(*
+let _ = 
+  let ic = open_in "test.csv" in
+  let csv = Csv.of_channel ?has_header:(Some true) ic in
+  let _ = List.iter (fun x -> Printf.printf "%s, " x) (Csv.Rows.header csv) in
+  let _ = Printf.printf "\n" in
+  let rec aux () = 
+    try
+      let line = Csv.Row.to_list (Csv.Rows.next csv) in
+      let _ = List.iter (fun x -> Printf.printf "%s, " x) line in
+      let _ = Printf.printf "\n" in
+      aux ()
+    with Csv.Failure _ ->
+      ()
+  in aux ()
+*)
 
 (* let _ = repl() *)
