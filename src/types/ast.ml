@@ -5,30 +5,25 @@ type attribute_renamed = attribute * string option
 type binop = 
   | And
   | Or
-  | Add
-  | Sub
-  | Times
-  | Div
-
-type compop =
   | Leq
   | Eq
   | Neq
   | Geq
   | Lt
   | Gt
-
-type exprop =
   | Add
   | Sub
   | Div
   | Times
 
+type atom =
+  | Attribute of attribute
+  | Number of int
+  | String of string
+
 type expression =
-  | AstExprOp of exprop * expression * expression
-  | AstAttribute of attribute
-  | AstNumber of int
-  | AstString of string
+  | AstExprOp of binop * expression * expression
+  | AstAtom of atom
 
 type 'a relation =
   | AstSubQuery of 'a query
@@ -41,18 +36,18 @@ and 'a query =
 
 type cond =
   | AstBinOp of binop * cond * cond
-  | AstCompOp of compop * expression * expression
+  | AstCompOp of binop * expression * expression
   | AstIn of expression * cond query
   | AstNotIn of expression * cond query
 
 
 type disj = 
-  | DisjCompOp of compop * attribute * attribute
+  | DisjCompOp of binop * attribute * attribute
   | DisjIn of attribute * (disj list list) query
   | DisjNotIn of attribute * (disj list list) query
 
 type disj_no_or = 
-  | DisjNOCompOp of compop * attribute * attribute
+  | DisjNOCompOp of binop * attribute * attribute
   | DisjNOIn of attribute * (disj_no_or list) query
   | DisjNONotIn of attribute * (disj_no_or list) query
 

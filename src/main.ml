@@ -52,7 +52,7 @@ let repl () =
   *)
 
 let _ = 
-  let query = "select * from test;" in
+  let query = "select * from test where test.Title1 == \"one\";" in
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
   let alg = Naivecompiler.naive_compiler ast in

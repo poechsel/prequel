@@ -10,3 +10,5 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Union.union (feed_from_query a) (feed_from_query b)
   | AlgProjection(a, headers) ->
     new Projection.projection (feed_from_query a) headers
+  | AlgSelect(a, filter) ->
+    new Select.select (feed_from_query a) filter

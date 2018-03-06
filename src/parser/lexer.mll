@@ -42,5 +42,5 @@ rule token = parse
 | "*"       { TIMES }
 | "/"       { DIV }
 | ['0'-'9']+ as s   { NUMBER(int_of_string s)}
-| '"'[^ '"']*'"' as s   { STRING(s)}
+| '"'[^ '"']*'"' as s   { STRING(String.sub s 1 (String.length s - 2))}
 | ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']* as s { ID(s)}

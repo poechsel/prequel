@@ -103,18 +103,18 @@ add_expression:
 
 mult_expression:
     | atom TIMES mult_expression
-        { AstExprOp(Times, $1, $3) }
+        { AstExprOp(Times, AstAtom $1, $3) }
     | atom DIV mult_expression
-        { AstExprOp(Div, $1, $3) }
+        { AstExprOp(Div, AstAtom $1, $3) }
     | LPAR add_expression RPAR
         { $2 }
     | atom 
-        { $1 }
+        { AstAtom $1 }
 
 atom:
     | NUMBER
-        { AstNumber $1 }
+        { Number $1 }
     | STRING
-        { AstString $1 }
+        { String $1 }
     | attribute
-        { AstAttribute $1 }
+        { Attribute $1 }
