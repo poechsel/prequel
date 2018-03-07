@@ -52,7 +52,7 @@ let repl () =
   *)
 
 let _ = 
-  let query = "select test.Title2 from test where test.Title1 + 1 == 2;" in
+  let query = "select test.Title2 from test, test2 where test.Title1 + 1 == 2;" in
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
   let alg = Naivecompiler.naive_compiler ast in

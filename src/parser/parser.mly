@@ -51,7 +51,7 @@ relation_atom:
 relation_list:
     | relation
         { [$1] }
-    | relation "," relation_list
+    | relation  COMA relation_list
         { $1 :: $3 }
 
 query:

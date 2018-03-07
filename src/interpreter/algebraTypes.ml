@@ -9,6 +9,7 @@ type algebra =
   | AlgUnion of algebra * algebra
   | AlgProjection of algebra * header list
   | AlgInput of string (* for input nodes *)
+  | AlgProduct of algebra * algebra
   | AlgSelect of algebra * expression
 
 type feed_result = string list

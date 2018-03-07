@@ -12,3 +12,5 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Projection.projection (feed_from_query a) headers
   | AlgSelect(a, filter) ->
     new Select.select (feed_from_query a) filter
+  | AlgProduct(a, b) ->
+    new Product.product (feed_from_query a) (feed_from_query b)
