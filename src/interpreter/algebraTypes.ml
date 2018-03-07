@@ -38,6 +38,22 @@ class virtual feed_interface =
 
 open Ast
 
+let comp_atom a b =
+  if a = b then 0 else
+  if a < b then -1 else
+    1
+
+let comp a b =
+  match (a, b) with
+  | (Number a), (Number b) -> 
+    comp_atom a b
+  | (String a), (String b) ->
+    comp_atom a b
+  | (Number a), (String b) ->
+    comp_atom a (int_of_string b)
+  | (String a), (Number b) ->
+    comp_atom (int_of_string a) b
+
 let rec execute_value expr env =
   match expr with
   | AlgAtom y -> begin
@@ -90,17 +106,17 @@ let rec execute_filter expr env =
       | Or ->
         execute_filter r env || execute_filter l env
       | Eq ->
-        execute_value r env = execute_value l env
+        comp (execute_value r env) (execute_value l env) = 0
       | Neq ->
-        execute_value r env != execute_value l env
+        comp (execute_value r env) (execute_value l env) != 0
       | Leq ->
-        execute_value r env <= execute_value l env
+        comp (execute_value r env) (execute_value l env) <= 0
       | Geq ->
-        execute_value r env >= execute_value l env
+        comp (execute_value r env) (execute_value l env) >= 0
       | Lt ->
-        execute_value r env < execute_value l env
+        comp (execute_value r env) (execute_value l env) < 0
       | Gt ->
-        execute_value r env > execute_value l env
+        comp (execute_value r env) (execute_value l env) > 0
       | _ -> failwith "unexpected"
     end 
   | _ -> failwith "unexpected"
