@@ -30,7 +30,7 @@ type 'a relation =
   | AstTable of string
 
 and 'a query =
-  | AstSelect of attribute_renamed list * ('a relation * string option) list * 'a option
+  | AstSelect of attribute_renamed list * ('a relation * string) list * 'a option
   | AstMinus of 'a query * 'a query
   | AstUnion of 'a query * 'a query
 

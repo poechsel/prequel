@@ -31,7 +31,7 @@ rule token = parse
 | ">"       { GT }
 | "<="      { LEQ }
 | ">="      { GEQ }
-| "=="      { EQ }
+| "="      { EQ }
 | "!="      { NEQ }
 | "."       { PUNKT }
 | ","       { COMA }

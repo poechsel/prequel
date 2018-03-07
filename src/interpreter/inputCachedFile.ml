@@ -1,5 +1,5 @@
 class inputCachedFile name =
-  let path' = name ^ ".csv" in
+  let path' = name in
   let file' = open_in path' in
   object(self)
     inherit AlgebraTypes.feed_interface

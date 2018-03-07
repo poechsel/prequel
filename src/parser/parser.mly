@@ -38,12 +38,12 @@ attribute:
 
 relation:
     | relation_atom AS ID
-        { $1, Some $3 }
-    | relation_atom
-        { $1, None }
+        { $1, $3 }
+    | relation_atom ID
+        { $1, $2 }
 
 relation_atom:
-    | ID 
+    | STRING
         { AstTable $1 }
     | LPAR query RPAR
         { AstSubQuery $2 }

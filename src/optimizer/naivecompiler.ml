@@ -21,9 +21,7 @@ let naive_compiler query =
 
   and compile_relation_renamed rel =
     match rel with
-    | x, None ->
-      compile_relation x
-    | x, Some y-> 
+    | x, y-> 
       AlgRenameTable(compile_relation x, y)
 
   and compile_relation rel = 
