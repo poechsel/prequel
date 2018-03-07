@@ -14,3 +14,5 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Select.select (feed_from_query a) filter
   | AlgProduct(a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
+  | AlgRenameTable(a, b) ->
+    new Rename.rename_table (feed_from_query a) (b)
