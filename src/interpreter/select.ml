@@ -14,7 +14,7 @@ class select (sub : AlgebraTypes.feed_interface) (selector : AlgebraTypes.expres
           let _ = List.iter2 (fun h v ->
               Hashtbl.add tbl h v
             ) headers x
-          in if AlgebraTypes.execute_filter filter tbl then
+          in if Arithmetics.execute_filter filter tbl then
             Some x
           else aux ()
       in aux ()

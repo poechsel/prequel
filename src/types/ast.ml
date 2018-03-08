@@ -42,9 +42,9 @@ type cond =
 
 
 type disj = 
-  | DisjCompOp of binop * attribute * attribute
-  | DisjIn of attribute * (disj list list) query
-  | DisjNotIn of attribute * (disj list list) query
+  | DisjCompOp of binop * expression * expression
+  | DisjIn of expression * (disj list list) query
+  | DisjNotIn of expression * (disj list list) query
 
 type disj_no_or = 
   | DisjNOCompOp of binop * attribute * attribute

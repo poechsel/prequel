@@ -1,5 +1,5 @@
 all:
-	ocamlbuild -yaccflag -v -package csv -lib unix src/main.native; 
+	ocamlbuild -yaccflag -v -package str -package csv -lib unix src/main.native; 
 byte:
 	ocamlbuild -yaccflag -v -package csv src/main.byte
 test:

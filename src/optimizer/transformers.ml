@@ -3,7 +3,6 @@ open Ast
 (* simple transformation to test if everything is working correctly *)
 let rec identity x =
   x
-(* NOT WORKING ANYMORE
 let rec disjunction (query : cond query) : disj list list query =
   (* Convert a query where the conditions can have any form
      to a query where conditions are in disjunctive form 
@@ -56,9 +55,12 @@ let rec disjunction (query : cond query) : disj list list query =
       [[ DisjIn(a, disjunction_query b) ]]
     | AstNotIn(a, b) ->
       [[ DisjNotIn(a, disjunction_query b) ]]
+    | AstBinOp(_, a, b) ->
+      failwith "unexpected operator during transformation"
   in
   disjunction_query query
 
+(*
 let rec remove_or query = 
   (* Convert a query where the conditions can have any form
      to a query where conditions are in disjunctive form 

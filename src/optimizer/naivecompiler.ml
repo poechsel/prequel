@@ -1,5 +1,6 @@
 open Ast
 open AlgebraTypes
+open Arithmetics
 
 let naive_compiler query =
   let rec compile_query query =
