@@ -3,7 +3,7 @@ open Ast
 (* simple transformation to test if everything is working correctly *)
 let rec identity x =
   x
-let rec disjunction (query : cond query) : disj list list query =
+let rec disjunction (query : cond query) : (disj list list * disj list list) query =
   (* Convert a query where the conditions can have any form
      to a query where conditions are in disjunctive form 
     
@@ -38,23 +38,23 @@ let rec disjunction (query : cond query) : disj list list query =
   and disjunction_cond cond =
     match cond with
     | AstBinOp(Or, a, b) ->
-      (disjunction_cond a) @ (disjunction_cond b)
+      let t1_pure, t1_sub = disjunction_cond a in
+      let t2_pure, t2_sub = disjunction_cond b in
+      t1_pure @ t2_pure, t1_sub @ t2_sub
     | AstBinOp(And, a, b) ->
-      let t1 = disjunction_cond a in
-      let t2 = disjunction_cond b in
-      List.concat (
-        List.map ( fun x ->
-            List.map (fun y ->
-                y @ x
-              ) t1
-        ) t2
-      ) 
+      let t1_pure, t1_sub = disjunction_cond a in
+      let t2_pure, t2_sub = disjunction_cond b in
+      List.map2 (@) t1_pure t2_pure,
+      [List.map2 (@) t1_sub t2_pure;
+       List.map2 (@) t1_pure t2_sub;
+       List.map2 (@) t1_sub t2_sub] |>
+      List.concat
     | AstCompOp(op, a, b) ->
-      [[ DisjCompOp(op, a, b) ]]
+      [ [ DisjCompOp(op, a, b) ] ] , []
     | AstIn(a, b) ->
-      [[ DisjIn(a, disjunction_query b) ]]
+      [], [ [ DisjIn(a, disjunction_query b) ] ]
     | AstNotIn(a, b) ->
-      [[ DisjNotIn(a, disjunction_query b) ]]
+      [], [ [ DisjNotIn(a, disjunction_query b) ] ]
     | AstBinOp(_, a, b) ->
       failwith "unexpected operator during transformation"
   in

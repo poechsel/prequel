@@ -57,7 +57,8 @@ let _ =
   let query = "SELECT e.nom, d.nom FROM \"employes.csv\" e, \"departements.csv\" d WHERE e.dpt = d.idd;" in
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
-  let alg = Naivecompiler.naive_compiler ast in
+  let ast_disj = Transformers.disjunction ast in
+  let alg = Naivecompiler.naive_compiler ast_disj in
   let feed = MetaQuery.feed_from_query alg in
   let rec aux () = 
        match feed#next with

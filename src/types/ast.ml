@@ -41,13 +41,16 @@ type cond =
   | AstNotIn of expression * cond query
 
 
+(* Here a query seector is represented in a list of tuples of list :
+   Elements of a list are connected through a OR op.
+
+   The left element of a tuple only contains expression without in and not in.
+   The right elements contains expressions with an in or a not in (at least one).
+
+   Expressions are represented as a list of sub-expressions connected by a AND.
+   This is nearly a disjunctive form.
+*)
 type disj = 
   | DisjCompOp of binop * expression * expression
-  | DisjIn of expression * (disj list list) query
-  | DisjNotIn of expression * (disj list list) query
-
-type disj_no_or = 
-  | DisjNOCompOp of binop * attribute * attribute
-  | DisjNOIn of attribute * (disj_no_or list) query
-  | DisjNONotIn of attribute * (disj_no_or list) query
-
+  | DisjIn of expression * (disj list list * disj list list) query
+  | DisjNotIn of expression * (disj list list * disj list list) query

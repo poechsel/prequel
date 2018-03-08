@@ -47,9 +47,7 @@ let rec execute_value expr env =
 let alg_expr_of_ast_expr expr = 
   let rec c_cond cond = 
     match cond with
-    | AstBinOp(op, a, b) ->
-      AlgBinOp(op, c_cond a, c_cond b)
-    | AstCompOp(op, a, b) ->
+    | DisjCompOp(op, a, b) ->
       AlgBinOp(op, c_expr a, c_expr b)
     | _ -> failwith "unexpected type of condition"
   and c_expr expr = 
