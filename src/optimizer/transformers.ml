@@ -1,6 +1,10 @@
 open Ast
 
 (* simple transformation to test if everything is working correctly *)
+
+let cartesian f l l' = 
+  List.concat (List.map (fun e -> List.map (fun e' -> f e e') l') l)
+
 let rec identity x =
   x
 let rec disjunction (query : cond query) : (disj list list * disj list list) query =
@@ -44,10 +48,10 @@ let rec disjunction (query : cond query) : (disj list list * disj list list) que
     | AstBinOp(And, a, b) ->
       let t1_pure, t1_sub = disjunction_cond a in
       let t2_pure, t2_sub = disjunction_cond b in
-      List.map2 (@) t1_pure t2_pure,
-      [List.map2 (@) t1_sub t2_pure;
-       List.map2 (@) t1_pure t2_sub;
-       List.map2 (@) t1_sub t2_sub] |>
+      cartesian (@) t1_pure t2_pure,
+      [cartesian (@) t1_sub t2_pure;
+       cartesian (@) t1_pure t2_sub;
+       cartesian (@) t1_sub t2_sub] |>
       List.concat
     | AstCompOp(op, a, b) ->
       [ [ DisjCompOp(op, a, b) ] ] , []

@@ -2,13 +2,57 @@ open Ast
 open AlgebraTypes
 open Arithmetics
 
+let print_attribute at = 
+  match at with
+  | None, x -> print_string x
+  | Some x, y -> Printf.printf "%s.%s" x y
+
+let rec print_alg alg = 
+  match alg with
+  | AlgProjection (sub, headers) ->
+    let _ = print_string "PROJ [" in
+    let _ = List.iter (fun x -> let _ = print_attribute x in print_string " ") in
+    let _ = print_string "]\n( " in
+    let _ = print_alg sub in
+    let _ = print_string "\n)\n" in ()
+  | AlgSelect (sub, expr ) ->
+    let _ = print_string "SELECT [" in
+    let _ = print_string "<expr> ]" in
+    let _ = print_string "\n( " in
+    let _ = print_alg sub in
+    let _ = print_string "\n)\n" in ()
+  | AlgProduct (a, b) ->
+    let _ = print_string "PRODUCT " in
+    let _ = print_string "\n( " in
+    let _ = print_alg a in
+    let _ = print_string "\n)\n" in
+    let _ = print_string "\n( " in
+    let _ = print_alg b in
+    let _ = print_string "\n)\n" in ()
+  | AlgInput(s) -> print_string "input"
+  | AlgRenameTable (sub, what) -> 
+    let _ = print_string "RENAME [" in
+    let _ = print_string what in
+    let _ = print_string "]\n( " in
+    let _ = print_alg sub in
+    let _ = print_string "\n)\n" in ()
+
+
+let merge_list fct l = 
+  if List.length l = 1 then 
+    List.hd l
+  else 
+    List.fold_left (fun a b ->
+        fct a b
+      ) (List.hd l) (List.tl l)
+
 let naive_compiler query =
   let rec compile_query query =
     match query with
     | AstSelect(attributes, tables, cond) ->
-      let layer = List.fold_left (fun a b ->
-            AlgProduct(a, compile_relation_renamed b)
-        ) (compile_relation_renamed (List.hd tables)) (List.tl tables) in
+      let layer = 
+        List.map compile_relation_renamed tables 
+        |> merge_list (fun a b -> AlgProduct(a, b)) in
       (*
       let layer = match cond with
         | None -> layer
@@ -18,7 +62,7 @@ let naive_compiler query =
       let layer = match attributes with
         | [] -> layer
         | _ -> AlgProjection(layer
-                            , List.map (fun i -> (fst i)) attributes)
+                            , List.map fst attributes)
       in layer
     | _ -> failwith "not implemented"
 
@@ -38,14 +82,41 @@ let naive_compiler query =
     match cond with
     | None -> source
     | Some (pure, sub) -> 
-      let convert_and and_expr = List.fold_left (fun a b ->
-            AlgBinOp(And, a, alg_expr_of_ast_expr b)
-        ) (alg_expr_of_ast_expr @@ List.hd and_expr) (List.tl and_expr) 
-      in
-      let pure = List.fold_left (fun a b ->
-          AlgBinOp(Or, a, convert_and b))
-          (convert_and @@ List.hd pure) (List.tl pure)
-      in AlgSelect(source, pure)
+      let convert_and and_expr = 
+        List.map alg_expr_of_ast_expr and_expr
+        |> merge_list (fun a b -> AlgBinOp(And, a, b)) 
+      in 
+      let layer = if List.length pure > 0 then
+          let pure = List.map convert_and pure
+                     |> merge_list (fun a b -> AlgBinOp(And, a, b))
+          in 
+          AlgSelect(source, pure) 
+        else source
+      in 
+      if List.length sub > 0 then 
+        let convert_and_in expr = List.fold_left (fun previous current ->
+            match current with
+            | DisjIn (expr, (AstSelect(attributes', tables', cond') as where)) ->
+              let tables'' = 
+                previous :: List.map compile_relation_renamed tables' 
+              (* TODO: make sur to rename before doing the join *)
+                |> merge_list (fun a b -> AlgProduct(a, b)) in
+              let cond' = match cond' with
+                | None -> Some ([[current]], [[]])
+                | Some (a, b) -> Some (List.map (fun x -> DisjCompOp(Eq, expr, AstAtom(Attribute (Some "s", "dpt"))) :: x) a, b)
+              in 
+              let layer = compile_where_clause tables'' cond' in
+              (* need to work on projection : we must project on everything but the attributes in attributes *)
+              let layer = match attributes' with
+                | [] -> layer
+                | _ -> layer
+            in layer 
+            | DisjNotIn _ -> failwith "not implemented"
+            | y -> AlgSelect(layer, alg_expr_of_ast_expr y)
+          ) layer expr
+        in List.map convert_and_in sub
+           |> merge_list (fun a b -> AlgUnion(a, b))
+      else layer
 
 
   in compile_query query

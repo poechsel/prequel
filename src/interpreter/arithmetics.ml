@@ -22,7 +22,7 @@ let rec execute_value expr env =
   match expr with
   | AlgAtom y -> begin
       match y with
-      | Attribute y ->
+      | Attribute ((Some a, b) as y) ->
         String (Hashtbl.find env y)
       | _ -> y
     end
