@@ -63,6 +63,7 @@ let _ =
   let ast = parse_line lexbuf in
   let ast_disj = Transformers.disjunction ast in
   let alg = Naivecompiler.naive_compiler ast_disj in
+  let graphviz_src = Debug.graphviz_of_algebra "test.dot" alg in
   let feed = MetaQuery.feed_from_query alg in
   let rec aux () = 
        match feed#next with
