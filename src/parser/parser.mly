@@ -90,7 +90,7 @@ at_cond:
     | add_expression IN LPAR query RPAR
         { AstIn($1, $4) }
     | add_expression NOT IN LPAR query RPAR
-        { AstIn($1, $5) }
+        { AstNotIn($1, $5) }
         
 
 add_expression:

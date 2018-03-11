@@ -77,6 +77,8 @@ let _ =
 "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN (SELECT * FROM (SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd) foo);" in*)
 
   let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND ds.idd IN (SELECT v.dpt FROM \"employes.csv\" v WHERE e.dpt = ds.idd and v.dpt = 1));" in 
+  
+  let query = "SELECT p.titre, e.nom FROM \"employes.csv\" e, \"projets.csv\" p, \"membres.csv\" m WHERE e.ide = m.ide AND m.idp = p.idp AND e.dpt NOT IN (SELECT r.dpt FROM \"employes.csv\" r WHERE r.ide = p.responsable);" in
 
   (*
   (* not working if we don't rename with uid the tables *)

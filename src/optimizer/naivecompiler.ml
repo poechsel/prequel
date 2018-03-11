@@ -113,6 +113,12 @@ let naive_compiler query =
                 | _ -> layer
               in layer 
                *)
+            | DisjNotIn (expr, query) -> 
+             let at = List.hd @@ get_attributes_query query in
+                let query' = add_table_to_query query (AstCompiled (previous), "") in
+                let attribute = match at with | (a, b), None | (a, _), Some b -> Attribute (a, b) in
+                AlgSelect(compile_query ~project:false query',
+                          alg_expr_of_ast_expr (DisjCompOp(Neq, expr, AstAtom(attribute)))) 
             | DisjIn(expr, query) ->
               let at = List.hd @@ get_attributes_query query in
               let query' = add_table_to_query query (AstCompiled (previous), "") in
@@ -120,8 +126,7 @@ let naive_compiler query =
               AlgSelect(compile_query ~project:false query',
                         alg_expr_of_ast_expr (DisjCompOp(Eq, expr, AstAtom(attribute)))) 
 
-            | DisjNotIn _ -> failwith "not implemented"
-            | y -> AlgSelect(layer, alg_expr_of_ast_expr y)
+            | y -> AlgSelect(previous, alg_expr_of_ast_expr y)
           ) layer expr
         in List.map convert_and_in sub
            |> merge_list (fun a b -> AlgUnion(a, b))
