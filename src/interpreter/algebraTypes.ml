@@ -1,9 +1,9 @@
-type header = string option * string
+type header = string * string
 
 let string_of_header header = 
   let prefix = match fst header with
-    | None -> ""
-    | Some x -> x ^ "."
+    | "" -> ""
+    | x -> x ^ "."
   in prefix ^ snd header
 
 type expression =

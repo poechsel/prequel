@@ -1,4 +1,4 @@
-type attribute = string option * string
+type attribute = string * string
 type attribute_renamed = attribute * string option
 
 

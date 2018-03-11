@@ -96,7 +96,7 @@ let naive_compiler query =
                 |> merge_list (fun a b -> AlgProduct(a, b)) in
               let cond' = match cond' with
                 | None -> Some ([[current]], [[]])
-                | Some (a, b) -> Some (List.map (fun x -> DisjCompOp(Eq, expr, AstAtom(Attribute (Some "s", "dpt"))) :: x) a, b)
+                | Some (a, b) -> Some (List.map (fun x -> DisjCompOp(Eq, expr, AstAtom(Attribute ("s", "dpt"))) :: x) a, b)
               in 
               let layer = compile_where_clause tables'' cond' in
               (* need to work on projection : we must project on everything but the attributes in attributes *)

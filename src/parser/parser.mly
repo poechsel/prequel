@@ -31,9 +31,9 @@ attribute_renamed:
 
 attribute:
     | ID PUNKT ID
-        { Some $1, $3 }
+        { $1, $3 }
     | ID 
-        { None, $1}
+        { "", $1}
 
 
 relation:

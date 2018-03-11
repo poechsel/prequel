@@ -2,14 +2,14 @@ class projection (sub : AlgebraTypes.feed_interface) ( headers : AlgebraTypes.he
   let all_headers = sub#headers in
   let _ = List.iter (fun x -> 
       let s = match fst x with 
-          | None -> ""
-          | Some x -> x ^ "."
+          | "" -> ""
+          | x -> x ^ "."
       in Printf.printf "%s | " (s ^ snd x)
     ) all_headers in
   let _ = List.iter (fun x -> 
       let s = match fst x with 
-          | None -> ""
-          | Some x -> x ^ "."
+          | "" -> ""
+          | x -> x ^ "."
       in Printf.printf "%s | " (s ^ snd x)
     ) headers in
   let _ = Printf.printf "\n" in

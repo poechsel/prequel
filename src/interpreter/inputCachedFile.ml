@@ -19,5 +19,5 @@ class inputCachedFile name =
       csv <- Csv.of_channel ?has_header:(Some true) file
 
     method headers =
-      List.map (fun i -> Some(name), i) @@ Csv.Rows.header csv
+      List.map (fun i -> name, i) @@ Csv.Rows.header csv
   end

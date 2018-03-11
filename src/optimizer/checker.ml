@@ -8,15 +8,13 @@ let headers_union a b =
   if List.for_all2 (=) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) then
     a
   else 
-    failwith "a et b différents"
+    failwith "the headers are different"
 
 let headers_join a b = 
-  let temp = List.merge (Pervasives.compare) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) in
-  let temp2 = List.sort_uniq (Pervasives.compare) temp in
-  if List.length temp != List.length temp2 then
-    failwith "their is one common element"
-  else 
     a @ b
+
+let headers_has_duplicate l = 
+  List.length @@ List.sort_uniq (Pervasives.compare) l != List.length l
 
 let check_coherence query =
   let rec check_query headers query =
@@ -47,6 +45,9 @@ let check_coherence query =
               | None -> (a, b) 
               | Some x -> (a, x)
             ) x, x
+      in let _ = if headers_has_duplicate (List.map snd headers) then
+           failwith "duplicate entry"
+        
       in headers, AstSelect(attributes, tables, selector)
 
   and check_relation headers relation = 
@@ -58,9 +59,9 @@ let check_coherence query =
     | AstTable name ->
       let oc = open_in name in
       let csv = Csv.of_channel ?has_header:(Some true) oc in
-      let headers = List.map (fun i -> Some(name), i) @@ Csv.Rows.header csv in
+      let headers = List.map (fun i -> name, i) @@ Csv.Rows.header csv in
       headers, AstTable name
-    in List.map (fun (_, c) -> Some (snd relation), c) headers, 
+    in List.map (fun (_, c) -> snd relation, c) headers, 
        (ast, snd relation)
 
     and check_cond headers cond = 
@@ -91,6 +92,9 @@ let check_coherence query =
     and check_atom headers atom =
       match atom with
       | Attribute attr ->
+        let _ = if not @@ List.exists (fun x -> attr = x) headers then
+            failwith "attribute not present"
+        in 
         (* send error *)
         Attribute attr
       | x -> x

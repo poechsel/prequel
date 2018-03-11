@@ -57,6 +57,14 @@ let _ =
   let query = "SELECT e.nom, d.nom FROM \"employes.csv\" e, \"departements.csv\" d WHERE e.dpt = d.idd;" in
   let query =
     "SELECT * FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd);" in 
+
+  (*
+  (* query that fails checking: *)
+  let query = 
+    "SELECT * FROM \"departements.csv\" e, \"departements.csv\" b;" in
+  let query = "(SELECT * FROM \"departements.csv\" e) UNION (SELECT * FROM \"employes.csv\" e);" in
+  let query = "SELECT * FROM \"departements.csv\" e WHERE e.foo = 4;" in
+  *)
    (*let query = 
 "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN (SELECT * FROM (SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd) foo);" in*)
 
