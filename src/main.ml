@@ -56,11 +56,18 @@ let _ =
   let query = "select foo.Title2 from (SELECT * from \"test.csv\" test, \"test2.csv\" test2 where test.Title1 + 1 = 2) AS foo;" in
   let query = "SELECT e.nom, d.nom FROM \"employes.csv\" e, \"departements.csv\" d WHERE e.dpt = d.idd;" in
   let query =
-    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd);" in 
+    "SELECT * FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd);" in 
+   (*let query = 
+"SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN (SELECT * FROM (SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd) foo);" in*)
+
+
+  (*let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND ds.idd IN (SELECT v.dpt FROM \"employes.csv\" v WHERE e.dpt = ds.idd and v.dpt = 1));" in *)
+
   (*let query =
     "SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide;" in *)
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
+  let ast = Checker.check_coherence ast in
   let ast_disj = Transformers.disjunction ast in
   let alg = Naivecompiler.naive_compiler ast_disj in
   let graphviz_src = Debug.graphviz_of_algebra "test.dot" alg in

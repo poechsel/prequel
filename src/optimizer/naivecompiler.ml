@@ -1,6 +1,7 @@
 open Ast
 open AlgebraTypes
 open Arithmetics
+open Utils
 
 let print_attribute at = 
   match at with
@@ -37,14 +38,6 @@ let rec print_alg alg =
     let _ = print_alg sub in
     let _ = print_string "\n)\n" in ()
 
-
-let merge_list fct l = 
-  if List.length l = 1 then 
-    List.hd l
-  else 
-    List.fold_left (fun a b ->
-        fct a b
-      ) (List.hd l) (List.tl l)
 
 let naive_compiler query =
   let rec compile_query query =
