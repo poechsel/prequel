@@ -81,15 +81,15 @@ let naive_compiler query =
     match cond with
     | None -> source
     | Some (pure, sub) -> 
-      let convert_and and_expr = 
-        List.map alg_expr_of_ast_expr and_expr
-        |> merge_list (fun a b -> AlgBinOp(And, a, b)) 
-      in 
-      let layer = if List.length pure > 0 then
-          let pure = List.map convert_and pure
-                     |> merge_list (fun a b -> AlgBinOp(And, a, b))
-          in 
-          AlgSelect(source, pure) 
+      let layer = 
+        if List.length pure > 0 then
+          let pure =
+            List.map (fun x ->
+                List.map alg_expr_of_ast_expr x 
+                |> merge_list (fun a b -> AlgBinOp(And, a, b))
+              ) pure
+            |> merge_list (fun a b -> AlgBinOp(Or, a, b))
+          in AlgSelect(source, pure) 
         else source
       in 
       if List.length sub > 0 then 
@@ -98,18 +98,27 @@ let naive_compiler query =
             | DisjIn (expr, (AstSelect(attributes', tables', cond') as where)) ->
               let tables'' = 
                 previous :: List.map compile_relation_renamed tables' 
-              (* TODO: make sur to rename before doing the join *)
+                (* TODO: make sur to rename before doing the join *)
                 |> merge_list (fun a b -> AlgProduct(a, b)) in
+              (*
               let cond' = match cond' with
                 | None -> Some ([[current]], [[]])
                 | Some (a, b) -> Some (List.map (fun x -> DisjCompOp(Eq, expr, AstAtom(Attribute ("s", "dpt"))) :: x) a, b)
-              in 
+              in*) 
               let layer = compile_where_clause tables'' cond' in
+              let layer = 
+                  let temp = List.hd attributes' in
+                  let attribute = match temp with
+                    | (a, b), None -> Attribute(a, b)
+                    | (a, _), Some x -> Attribute(a, x)
+                  in AlgSelect(layer, alg_expr_of_ast_expr (DisjCompOp(Eq, expr, AstAtom(attribute))))
+              in 
+
               (* need to work on projection : we must project on everything but the attributes in attributes *)
               let layer = match attributes' with
                 | [] -> layer
                 | _ -> layer
-            in layer 
+              in layer 
             | DisjNotIn _ -> failwith "not implemented"
             | y -> AlgSelect(layer, alg_expr_of_ast_expr y)
           ) layer expr

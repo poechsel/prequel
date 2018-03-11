@@ -7,3 +7,7 @@ let merge_list fct l =
         fct a b
       ) (List.hd l) (List.tl l)
 
+let option_map fct x = 
+  match x with
+  | None -> None
+  | Some x -> Some (fct x)

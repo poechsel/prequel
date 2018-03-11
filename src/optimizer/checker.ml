@@ -35,11 +35,9 @@ let check_coherence query =
                    |> List.split 
         in merge_list headers_join h, List.fold_left (fun a b -> b::a ) [] t
       in let headers_collection = headers_join headers_collection headers
-      in let selector = match selector with
-        | None -> None
-        | Some x -> Some (check_cond headers_collection x)
+      in let selector = Utils.option_map (check_cond headers_collection) selector
       in let headers, attributes = match attributes with
-          | [] -> headers_collection, List.map (fun a ->a, None) headers_collection
+          | [] -> headers_collection, List.map (fun a -> a, None) headers_collection
           | x -> List.map (fun ((a, b), c) -> 
               match c with 
               | None -> (a, b) 
@@ -74,11 +72,15 @@ let check_coherence query =
         AstCompOp(op, c_e a, c_e b)
       | AstIn(e, sub) ->
         let h, sub = check_query headers sub
-        in (*raise error here*)
+        in if List.length h != 1 then
+          failwith "incorrect syntax for a ...  not in (...)"
+        else 
         AstIn(c_e e, sub)
       | AstNotIn(e, sub) ->
         let h, sub = check_query headers sub
-        in (*raise error here*)
+        in if List.length h != 1 then
+          failwith "incorrect syntax for a ...  not in (...)"
+        else 
         AstNotIn(c_e e, sub)
 
     and check_expr headers expr = 
@@ -103,3 +105,61 @@ let check_coherence query =
 
 
     in snd @@ check_query [] query
+
+
+module Env = Map.Make(struct
+    type t = string
+    let compare = Pervasives.compare
+  end)
+
+(* rename every table to a uuid *)
+let rename_tables query =
+  let uid = ref 0 in
+  let rec ren_query env query = 
+    match query with
+    | AstSelect (attributes, relations, where) ->
+      let env' = env in
+      let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid)previous ) env' relations in
+      let relations = List.map (fun (rel, c) ->
+          (match rel with
+           | AstSubQuery q -> AstSubQuery(ren_query env q)
+           | _ -> rel
+          ), Env.find c env''
+        ) relations
+      in let attributes = List.map (fun ((m, a), b) ->
+          if Env.mem m env'' then
+            (Env.find m env'', a), b
+          else 
+            (m, a), b
+        ) attributes
+      in let where = Utils.option_map (ren_cond env'') where
+      in AstSelect(attributes, relations, where)
+
+  and ren_cond env cond = 
+    match cond with
+    | AstBinOp(op, a, b) ->
+      AstBinOp(op, ren_cond env a, ren_cond env b)
+    | AstCompOp(op, a, b) ->
+      AstCompOp(op, ren_expr env a, ren_expr env b)
+    | AstIn(expr, query) ->
+      AstIn(ren_expr env expr, ren_query env query)
+    | AstNotIn(expr, query) ->
+      AstNotIn(ren_expr env expr, ren_query env query)
+
+  and ren_expr env expr =
+    match expr with
+    | AstExprOp(op, a, b) ->
+      AstExprOp(op, ren_expr env a, ren_expr env b)
+    | AstAtom x ->
+      AstAtom(ren_atom env x)
+
+  and ren_atom env atom = 
+    match atom with
+    | Attribute ((m, b)) ->
+      Attribute(if Env.mem m env then
+                  (Env.find m env, b)
+                else 
+                  (m, b))
+    | x -> x
+
+  in ren_query (Env.empty) query
