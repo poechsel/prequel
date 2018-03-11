@@ -12,6 +12,7 @@ type expression =
 
 type algebra =
   | AlgUnion of algebra * algebra
+  | AlgMinus of algebra * algebra
   | AlgProjection of algebra * header list
   | AlgInput of string (* for input nodes *)
   | AlgProduct of algebra * algebra

@@ -59,6 +59,13 @@ let _ =
     "SELECT * FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd);" in 
 
   (*
+  (* test for minus & union *)
+  let query = 
+    "(SELECT * FROM \"departements.csv\" e) minus (SELECT * FROM \"departements.csv\" e where e.idd < 5);" in
+  let query = 
+    "(SELECT * FROM \"departements.csv\" e) union (SELECT * FROM \"departements.csv\" e where e.idd < 5);" in
+  *)
+  (*
   (* query that fails checking: *)
   let query = 
     "SELECT * FROM \"departements.csv\" e, \"departements.csv\" b;" in

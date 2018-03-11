@@ -8,6 +8,8 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new InputCachedFile.inputCachedFile str
   | AlgUnion(a, b) ->
     new Union.union (feed_from_query a) (feed_from_query b)
+  | AlgMinus(a, b) ->
+    new Minus.minus (feed_from_query a) (feed_from_query b)
   | AlgProjection(a, headers) ->
     new Projection.projection (feed_from_query a) headers
   | AlgSelect(a, filter) ->

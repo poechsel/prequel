@@ -42,7 +42,16 @@ let graphviz_instrs_of_algebra alg =
       let _ = incr uid in
       !uid, a_str 
             @ b_str 
-            @ [Printf.sprintf node !uid "union";
+            @ [Printf.sprintf node !uid "minus";
+               Printf.sprintf edge !uid a_lbl;
+               Printf.sprintf edge !uid b_lbl]
+    | AlgMinus(a, b) ->
+      let a_lbl, a_str = conv_alg a in
+      let b_lbl, b_str = conv_alg b in
+      let _ = incr uid in
+      !uid, a_str 
+            @ b_str 
+            @ [Printf.sprintf node !uid "minus";
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 

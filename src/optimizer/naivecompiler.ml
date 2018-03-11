@@ -42,6 +42,12 @@ let rec print_alg alg =
 let naive_compiler query =
   let rec compile_query query =
     match query with
+    | AstMinus (a, b) ->
+      AlgMinus(compile_query a, compile_query b)
+    | AstUnion (a, b) ->
+      AlgUnion(compile_query a, compile_query b)
+
+
     | AstSelect(attributes, tables, cond) ->
       let layer = 
         List.map compile_relation_renamed tables 
