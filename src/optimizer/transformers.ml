@@ -7,7 +7,7 @@ let cartesian f l l' =
 
 let rec identity x =
   x
-let rec disjunction (query : cond query) : (disj list list * disj list list) query =
+let rec disjunction (query : ('b cond, 'b) query) : ('b disj list list * 'b disj list list, 'b) query =
   (* Convert a query where the conditions can have any form
      to a query where conditions are in disjunctive form 
     

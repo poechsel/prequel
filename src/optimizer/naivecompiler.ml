@@ -8,44 +8,30 @@ let print_attribute at =
   | None, x -> print_string x
   | Some x, y -> Printf.printf "%s.%s" x y
 
-let rec print_alg alg = 
-  match alg with
-  | AlgProjection (sub, headers) ->
-    let _ = print_string "PROJ [" in
-    let _ = List.iter (fun x -> let _ = print_attribute x in print_string " ") in
-    let _ = print_string "]\n( " in
-    let _ = print_alg sub in
-    let _ = print_string "\n)\n" in ()
-  | AlgSelect (sub, expr ) ->
-    let _ = print_string "SELECT [" in
-    let _ = print_string "<expr> ]" in
-    let _ = print_string "\n( " in
-    let _ = print_alg sub in
-    let _ = print_string "\n)\n" in ()
-  | AlgProduct (a, b) ->
-    let _ = print_string "PRODUCT " in
-    let _ = print_string "\n( " in
-    let _ = print_alg a in
-    let _ = print_string "\n)\n" in
-    let _ = print_string "\n( " in
-    let _ = print_alg b in
-    let _ = print_string "\n)\n" in ()
-  | AlgInput(s) -> print_string "input"
-  | AlgRenameTable (sub, what) -> 
-    let _ = print_string "RENAME [" in
-    let _ = print_string what in
-    let _ = print_string "]\n( " in
-    let _ = print_alg sub in
-    let _ = print_string "\n)\n" in ()
 
+let rec add_table_to_query query table = 
+  match query with
+  | AstSelect(at, tables, where) ->
+    AstSelect(at, table::tables, where)
+  | AstUnion(a, b) ->
+    AstUnion(add_table_to_query a table, add_table_to_query b table)
+  | AstMinus(a, b) ->
+    AstMinus(add_table_to_query a table, add_table_to_query b table)
+
+let rec get_attributes_query query =
+  match query with
+  | AstSelect(at, _, _) ->
+    at
+  | AstUnion(a, b) | AstMinus(a, b) ->
+    get_attributes_query a
 
 let naive_compiler query =
-  let rec compile_query query =
+  let rec compile_query ?(project=true) query =
     match query with
     | AstMinus (a, b) ->
-      AlgMinus(compile_query a, compile_query b)
+      AlgMinus(compile_query ~project:project a, compile_query ~project:project b)
     | AstUnion (a, b) ->
-      AlgUnion(compile_query a, compile_query b)
+      AlgUnion(compile_query ~project:project a, compile_query ~project:project b)
 
 
     | AstSelect(attributes, tables, cond) ->
@@ -60,15 +46,19 @@ let naive_compiler query =
       let layer = compile_where_clause layer cond in
       let layer = match attributes with
         | [] -> layer
-        | _ -> AlgProjection(layer
+        | _ when project -> AlgProjection(layer
                             , List.map fst attributes)
+        | _ -> layer
       in layer
     | _ -> failwith "not implemented"
 
   and compile_relation_renamed rel =
     match rel with
+    | x, ""-> 
+      compile_relation x
     | x, y-> 
       AlgRenameTable(compile_relation x, y)
+    
 
   and compile_relation rel = 
     match rel with
@@ -76,6 +66,8 @@ let naive_compiler query =
       AlgInput x
     | AstSubQuery q ->
       compile_query q
+    | AstCompiled q ->
+      q
 
   and compile_where_clause source cond =
     match cond with
@@ -95,6 +87,7 @@ let naive_compiler query =
       if List.length sub > 0 then 
         let convert_and_in expr = List.fold_left (fun previous current ->
             match current with
+            (*
             | DisjIn (expr, (AstSelect(attributes', tables', cond') as where)) ->
               let tables'' = 
                 previous :: List.map compile_relation_renamed tables' 
@@ -119,6 +112,14 @@ let naive_compiler query =
                 | [] -> layer
                 | _ -> layer
               in layer 
+               *)
+            | DisjIn(expr, query) ->
+              let at = List.hd @@ get_attributes_query query in
+              let query' = add_table_to_query query (AstCompiled (previous), "") in
+              let attribute = match at with | (a, b), None | (a, _), Some b -> Attribute (a, b) in
+              AlgSelect(compile_query ~project:false query',
+                        alg_expr_of_ast_expr (DisjCompOp(Eq, expr, AstAtom(attribute)))) 
+
             | DisjNotIn _ -> failwith "not implemented"
             | y -> AlgSelect(layer, alg_expr_of_ast_expr y)
           ) layer expr

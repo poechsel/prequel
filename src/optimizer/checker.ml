@@ -115,7 +115,12 @@ module Env = Map.Make(struct
 (* rename every table to a uuid *)
 let rename_tables query =
   let uid = ref 0 in
-  let rec ren_query env query = 
+  let ren_attribute env (m, a) =
+          if Env.mem m env then
+            (Env.find m env, a)
+          else 
+            (m, a)
+  in let rec ren_query env query = 
     match query with
     | AstSelect (attributes, relations, where) ->
       let env' = env in
@@ -126,11 +131,8 @@ let rename_tables query =
            | _ -> rel
           ), Env.find c env''
         ) relations
-      in let attributes = List.map (fun ((m, a), b) ->
-          if Env.mem m env'' then
-            (Env.find m env'', a), b
-          else 
-            (m, a), b
+      in let attributes = List.map (fun (x, b) -> 
+          ren_attribute env'' x, b
         ) attributes
       in let where = Utils.option_map (ren_cond env'') where
       in AstSelect(attributes, relations, where)
@@ -155,11 +157,8 @@ let rename_tables query =
 
   and ren_atom env atom = 
     match atom with
-    | Attribute ((m, b)) ->
-      Attribute(if Env.mem m env then
-                  (Env.find m env, b)
-                else 
-                  (m, b))
+    | Attribute (x) ->
+      Attribute(ren_attribute env x)
     | x -> x
 
   in ren_query (Env.empty) query

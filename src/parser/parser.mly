@@ -10,7 +10,7 @@ open Ast
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV
 
 %start main
-%type<Ast.cond Ast.query> main
+%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main
 %%
 
 main:
