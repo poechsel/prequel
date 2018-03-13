@@ -38,6 +38,8 @@ let rec disjunction (query : ('b cond, 'b) query) : ('b disj list list * 'b disj
         AstTable y
       | AstSubQuery y ->
         AstSubQuery (disjunction_query y)
+      | AstCompiled y ->
+        AstCompiled y
     end, snd rel
   and disjunction_cond cond =
     match cond with

@@ -1,0 +1,1 @@
+SELECT s.dpt FROM "employes.csv" s, "departements.csv" ds WHERE ds.directeur = s.ide

@@ -1,0 +1,1 @@
+SELECT * FROM "departements.csv" e WHERE e.foo = 4

@@ -11,7 +11,7 @@ let headers_union a b =
     failwith "the headers are different"
 
 let headers_join a b = 
-    a @ b
+  a @ b
 
 let headers_has_duplicate l = 
   List.length @@ List.sort_uniq (Pervasives.compare) l != List.length l
@@ -44,67 +44,69 @@ let check_coherence query =
               | Some x -> (a, x)
             ) x, x
       in let _ = if headers_has_duplicate (List.map snd headers) then
-           failwith "duplicate entry"
-        
+             failwith "duplicate entry"
+
       in headers, AstSelect(attributes, tables, selector)
 
   and check_relation headers relation = 
     let headers, ast =
       match fst relation with
-    | AstSubQuery x ->
-      let a, b = check_query headers x in
-      a, AstSubQuery b
-    | AstTable name ->
-      let oc = open_in name in
-      let csv = Csv.of_channel ?has_header:(Some true) oc in
-      let headers = List.map (fun i -> name, i) @@ Csv.Rows.header csv in
-      headers, AstTable name
+      | AstSubQuery x ->
+        let a, b = check_query headers x in
+        a, AstSubQuery b
+      | AstTable name ->
+        let oc = open_in name in
+        let csv = Csv.of_channel ?has_header:(Some true) oc in
+        let headers = List.map (fun i -> name, i) @@ Csv.Rows.header csv in
+        headers, AstTable name
+      | AstCompiled x ->
+        [], AstCompiled x
     in List.map (fun (_, c) -> snd relation, c) headers, 
        (ast, snd relation)
 
-    and check_cond headers cond = 
-      let c_c = check_cond headers in 
-      let c_e = check_expr headers in
-      match cond with
-      | AstBinOp(op, a, b) ->
-        AstBinOp(op, c_c a, c_c b)
-      | AstCompOp(op, a, b) ->
-        AstCompOp(op, c_e a, c_e b)
-      | AstIn(e, sub) ->
-        let h, sub = check_query headers sub
-        in if List.length h != 1 then
-          failwith "incorrect syntax for a ...  not in (...)"
-        else 
+  and check_cond headers cond = 
+    let c_c = check_cond headers in 
+    let c_e = check_expr headers in
+    match cond with
+    | AstBinOp(op, a, b) ->
+      AstBinOp(op, c_c a, c_c b)
+    | AstCompOp(op, a, b) ->
+      AstCompOp(op, c_e a, c_e b)
+    | AstIn(e, sub) ->
+      let h, sub = check_query headers sub
+      in if List.length h != 1 then
+        failwith "incorrect syntax for a ...  not in (...)"
+      else 
         AstIn(c_e e, sub)
-      | AstNotIn(e, sub) ->
-        let h, sub = check_query headers sub
-        in if List.length h != 1 then
-          failwith "incorrect syntax for a ...  not in (...)"
-        else 
+    | AstNotIn(e, sub) ->
+      let h, sub = check_query headers sub
+      in if List.length h != 1 then
+        failwith "incorrect syntax for a ...  not in (...)"
+      else 
         AstNotIn(c_e e, sub)
 
-    and check_expr headers expr = 
-      let c_e = check_expr headers in
-      match expr with
-      | AstExprOp(op, a, b) ->
-        AstExprOp(op, c_e a, c_e b)
-      | AstAtom(atom) ->
-        AstAtom(check_atom headers atom)
+  and check_expr headers expr = 
+    let c_e = check_expr headers in
+    match expr with
+    | AstExprOp(op, a, b) ->
+      AstExprOp(op, c_e a, c_e b)
+    | AstAtom(atom) ->
+      AstAtom(check_atom headers atom)
 
-    and check_atom headers atom =
-      match atom with
-      | Attribute attr ->
-        let _ = if not @@ List.exists (fun x -> attr = x) headers then
-            failwith "attribute not present"
-        in 
-        (* send error *)
-        Attribute attr
-      | x -> x
-
-
+  and check_atom headers atom =
+    match atom with
+    | Attribute attr ->
+      let _ = if not @@ List.exists (fun x -> attr = x) headers then
+          failwith "attribute not present"
+      in 
+      (* send error *)
+      Attribute attr
+    | x -> x
 
 
-    in snd @@ check_query [] query
+
+
+  in snd @@ check_query [] query
 
 
 module Env = Map.Make(struct
@@ -116,26 +118,30 @@ module Env = Map.Make(struct
 let rename_tables query =
   let uid = ref 0 in
   let ren_attribute env (m, a) =
-          if Env.mem m env then
-            (Env.find m env, a)
-          else 
-            (m, a)
+    if Env.mem m env then
+      (Env.find m env, a)
+    else 
+      (m, a)
   in let rec ren_query env query = 
-    match query with
-    | AstSelect (attributes, relations, where) ->
-      let env' = env in
-      let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid)previous ) env' relations in
-      let relations = List.map (fun (rel, c) ->
-          (match rel with
-           | AstSubQuery q -> AstSubQuery(ren_query env q)
-           | _ -> rel
-          ), Env.find c env''
-        ) relations
-      in let attributes = List.map (fun (x, b) -> 
-          ren_attribute env'' x, b
-        ) attributes
-      in let where = Utils.option_map (ren_cond env'') where
-      in AstSelect(attributes, relations, where)
+       match query with
+       | AstSelect (attributes, relations, where) ->
+         let env' = env in
+         let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid)previous ) env' relations in
+         let relations = List.map (fun (rel, c) ->
+             (match rel with
+              | AstSubQuery q -> AstSubQuery(ren_query env q)
+              | _ -> rel
+             ), Env.find c env''
+           ) relations
+         in let attributes = List.map (fun (x, b) -> 
+             ren_attribute env'' x, b
+           ) attributes
+         in let where = Utils.option_map (ren_cond env'') where
+         in AstSelect(attributes, relations, where)
+       | AstUnion(a, b) ->
+         AstUnion(ren_query env a, ren_query env b)
+       | AstMinus(a, b) ->
+         AstMinus(ren_query env a, ren_query env b)
 
   and ren_cond env cond = 
     match cond with

@@ -96,13 +96,12 @@ let graphviz_instrs_of_algebra alg =
   in conv_alg alg
 
 
-let graphviz_to_file file graphviz_instructions =
+let graphviz_to_channel channel graphviz_instructions =
   let str = String.concat ";\n" graphviz_instructions in
-  let oc = open_out file in
-  let _ = Printf.fprintf oc "digraph G{\n%s\n}" str in
-  close_out oc
+  let _ = Printf.fprintf channel "digraph G{\n%s\n}" str in
+  ()
 
 
-let graphviz_of_algebra file alg = 
+let graphviz_of_algebra channel alg = 
   snd (graphviz_instrs_of_algebra alg)
-  |> graphviz_to_file file
+  |> graphviz_to_channel channel

@@ -1,0 +1,1 @@
+select foo.Title2 from (SELECT * from "test.csv" test, "test2.csv" test2 where test.Title1 + 1 = 2) AS foo

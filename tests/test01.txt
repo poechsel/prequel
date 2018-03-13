@@ -1,0 +1,1 @@
+select test.Title2 from "test.csv" test, "test2.csv" test2 where test.Title1 + 1 = 2

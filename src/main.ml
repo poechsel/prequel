@@ -7,12 +7,15 @@ open MetaQuery
 
 type params = {repl: bool ref; out: string ref; request: string ref; graphviz: string ref}
 
-let parse_line lexbuf =
+let parse_line ?(with_endline=true) lexbuf =
   (* parse a line from a corresponding buffer of tokens
      @Param lexbuf: a buffer of tokens
      *)
   try
-    Parser.main Lexer.token lexbuf
+    if with_endline = true then
+      Parser.main_with_endline Lexer.token lexbuf
+    else 
+      Parser.main_without_endline Lexer.token lexbuf
   with exn ->
     begin
       let tok = Lexing.lexeme lexbuf in
@@ -36,7 +39,7 @@ let action params ast =
     *)
   let ast = clean_ast ast in
   let alg = compile_and_optimize ast in
-  let _ = if !(params.graphviz) <> "" then Debug.graphviz_of_algebra !(params.graphviz) alg in
+  let _ = if !(params.graphviz) <> "" then Debug.graphviz_of_algebra (open_out !(params.graphviz)) alg in
   let feed = MetaQuery.feed_from_query alg in
   let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
   let _ = feed#save out_channel in
@@ -61,11 +64,6 @@ let repl params =
   in 
   aux ();;
 
-(*example:
-  select test.Title1 from test;
-  select * from test;
-  *)
-
 
 let _ = 
   let params = {repl = ref false; out = ref ""; request = ref ""; graphviz = ref ""} in
@@ -75,79 +73,12 @@ let _ =
     ; "-graphviz", Arg.Set_string params.graphviz, "generate a graphviz plot of the relationnal algebra tree"
   ] in
   let () = Arg.parse speclist ((:=) params.request) "MinSQl" in
-  let query = "select test.Title2 from \"test.csv\" test, \"test2.csv\" test2 where test.Title1 + 1 = 2;" in
-  let query = "select foo.Title2 from (SELECT * from \"test.csv\" test, \"test2.csv\" test2 where test.Title1 + 1 = 2) AS foo;" in
-  let query = "SELECT e.nom, d.nom FROM \"employes.csv\" e, \"departements.csv\" d WHERE e.dpt = d.idd;" in
-  let query =
-    "SELECT * FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd);" in 
 
 
-  (*
-  (* test for minus & union *)
-  let query = 
-    "(SELECT * FROM \"departements.csv\" e) minus (SELECT * FROM \"departements.csv\" e where e.idd < 5);" in
-  let query = 
-    "(SELECT * FROM \"departements.csv\" e) union (SELECT * FROM \"departements.csv\" e where e.idd < 5);" in
-  *)
-  (*
-  (* query that fails checking: *)
-  let query = 
-    "SELECT * FROM \"departements.csv\" e, \"departements.csv\" b;" in
-  let query = "(SELECT * FROM \"departements.csv\" e) UNION (SELECT * FROM \"employes.csv\" e);" in
-  let query = "SELECT * FROM \"departements.csv\" e WHERE e.foo = 4;" in
-  *)
-   (*let query = 
-"SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN (SELECT * FROM (SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd) foo);" in*)
-
-  let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND ds.idd IN (SELECT v.dpt FROM \"employes.csv\" v WHERE e.dpt = ds.idd and v.dpt = 1));" in 
-  let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide);" in 
-  
-  let query = "SELECT p.titre, e.nom FROM \"employes.csv\" e, \"projets.csv\" p, \"membres.csv\" m WHERE e.ide = m.ide AND m.idp = p.idp AND e.dpt NOT IN (SELECT r.dpt FROM \"employes.csv\" r WHERE r.ide = p.responsable);" in
-
-  (*
-  (* not working if we don't rename with uid the tables *)
-  let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT e.dpt FROM \"employes.csv\" e, \"departements.csv\" ds WHERE ds.directeur = e.ide AND ds.idd IN (SELECT v.dpt FROM \"employes.csv\" v WHERE e.dpt = ds.idd and v.dpt = 1));" in 
-     *)
-
-  (*let query =
-    "SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide;" in *)
-  if !(params.repl) then 
+  if !(params.repl) || !(params.request) = "" then 
       repl params
     else 
-  let lexbuf = Lexing.from_string query in
-  let ast = parse_line lexbuf in
+      let input_channel = open_in !(params.request) in
+  let lexbuf = Lexing.from_channel input_channel in
+  let ast = parse_line ~with_endline:false lexbuf in
   action params ast
-
-
-(*
-let _ = 
-  let feed = MetaQuery.feed_from_query (AlgebraTypes.AlgProjection ((AlgebraTypes.AlgUnion 
-                                                (AlgebraTypes.AlgInput "test", 
-                                                 AlgebraTypes.AlgInput "test")
-                                                        ), ["Title1"]))
-  in let rec aux () = 
-       match feed#next with
-       | None -> ()
-       | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
-  in aux ()
-  in ()
-*)
-
-(*
-let _ = 
-  let ic = open_in "test.csv" in
-  let csv = Csv.of_channel ?has_header:(Some true) ic in
-  let _ = List.iter (fun x -> Printf.printf "%s, " x) (Csv.Rows.header csv) in
-  let _ = Printf.printf "\n" in
-  let rec aux () = 
-    try
-      let line = Csv.Row.to_list (Csv.Rows.next csv) in
-      let _ = List.iter (fun x -> Printf.printf "%s, " x) line in
-      let _ = Printf.printf "\n" in
-      aux ()
-    with Csv.Failure _ ->
-      ()
-  in aux ()
-*)
-
-(* let _ = repl() *)

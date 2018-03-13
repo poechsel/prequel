@@ -56,7 +56,6 @@ let naive_compiler query =
         | _ when project -> AlgProjection(layer, List.map fst attributes)
         | _ -> layer
       in layer
-    | _ -> failwith "not implemented"
 
   and compile_relation_renamed rel =
     match rel with

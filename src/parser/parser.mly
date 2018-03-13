@@ -7,13 +7,20 @@ open Ast
 %token <int> NUMBER
 %token SELECT WHERE GROUP BY FROM ORDER UNION MINUS
 %token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
-%token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV
+%token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
-%start main
-%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main
+%start main_with_endline
+%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main_with_endline
+%start main_without_endline
+%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main_without_endline
 %%
 
-main:
+main_with_endline:
+    | query ENDLINE
+        { $1 }
+main_without_endline:
+    | query EOF
+        { $1 }
     | query ENDLINE
         { $1 }
 

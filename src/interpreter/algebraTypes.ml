@@ -18,7 +18,6 @@ type algebra =
   | AlgProduct of algebra * algebra
   | AlgSelect of algebra * expression
   | AlgRenameTable of algebra * string
-  | AlgRenameRows of algebra * (string * expression)
 
 type feed_result = string list
 
