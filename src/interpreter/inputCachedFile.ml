@@ -1,6 +1,10 @@
 class inputCachedFile name =
   let path' = name in
-  let file' = open_in path' in
+  let file' = try
+      open_in path' 
+    with e ->
+        raise (Errors.InterpretationError (Printf.sprintf "error: file \"%s\" doesn't exists" path')) in
+
   object(self)
     inherit AlgebraTypes.feed_interface
     val name = name

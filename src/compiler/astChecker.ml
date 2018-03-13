@@ -8,7 +8,7 @@ let headers_union a b =
   if List.for_all2 (=) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) then
     a
   else 
-    failwith "the headers are different"
+    raise (Errors.BadQuery "Some headers are different")
 
 let headers_join a b = 
   a @ b
@@ -44,7 +44,10 @@ let check_coherence query =
               | Some x -> (a, x)
             ) x, x
       in let _ = if headers_has_duplicate (List.map snd headers) then
-             failwith "duplicate entry"
+             raise (Errors.BadQuery "A duplicate entry was found.\
+                                     Warning: a.foo and b.foo are \
+                                     considered as duplicate because \
+                                     their name (\"foo\") are the same.")
 
       in headers, AstSelect(attributes, tables, selector)
 
@@ -55,7 +58,12 @@ let check_coherence query =
         let a, b = check_query headers x in
         a, AstSubQuery b
       | AstTable name ->
-        let oc = open_in name in
+        let oc = 
+          try
+            open_in name 
+          with e ->
+            raise (Errors.BadQuery (Printf.sprintf "error: file \"%s\" doesn't exists" name)) 
+        in
         let csv = Csv.of_channel ?has_header:(Some true) oc in
         let headers = List.map (fun i -> name, i) @@ Csv.Rows.header csv in
         headers, AstTable name
@@ -75,13 +83,13 @@ let check_coherence query =
     | AstIn(e, sub) ->
       let h, sub = check_query headers sub
       in if List.length h != 1 then
-        failwith "incorrect syntax for a ...  not in (...)"
+        raise (Errors.BadQuery "the subquery inside a 'in' must have only one row")
       else 
         AstIn(c_e e, sub)
     | AstNotIn(e, sub) ->
       let h, sub = check_query headers sub
       in if List.length h != 1 then
-        failwith "incorrect syntax for a ...  not in (...)"
+        raise (Errors.BadQuery "the subquery inside a 'not in' must have only one row")
       else 
         AstNotIn(c_e e, sub)
 
@@ -97,7 +105,7 @@ let check_coherence query =
     match atom with
     | Attribute attr ->
       let _ = if not @@ List.exists (fun x -> attr = x) headers then
-          failwith "attribute not present"
+          raise (Errors.BadQuery (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_atom atom)))
       in 
       (* send error *)
       Attribute attr

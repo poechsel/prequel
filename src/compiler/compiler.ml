@@ -37,7 +37,10 @@ let rec get_attributes_query query =
   | AstUnion(a, b) | AstMinus(a, b) ->
     get_attributes_query a
 
-let naive_compiler query =
+let compile query =
+  (* compile a given query
+     The query MUST be in disjunctive form
+     Return an algebra *)
   let rec compile_query ?(project=true) query =
     match query with
     | AstMinus (a, b) ->
@@ -78,6 +81,7 @@ let naive_compiler query =
     match cond with
     | None -> source
     | Some (pure, sub) -> 
+      (* first, we compile the pure part: we can convert it directly to a boolean expression *)
       let layer = 
         if List.length pure > 0 then
           let pure =
@@ -89,6 +93,11 @@ let naive_compiler query =
           in AlgSelect(source, pure) 
         else source
       in 
+      (* to compile the part composed of "subqueries", we use to remarks:
+         - a or can be converted with a union
+         - select_cond1(select_cond2(...)) = select_(cond1/\cond2)(...)
+            This remark could be usefull for optimisations
+      *)
       if List.length sub > 0 then 
         let attr_from_select s = match s with 
           | (a, b), None 

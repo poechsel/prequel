@@ -17,6 +17,12 @@ let string_of_op op =
   | Times -> "*"
   | Div -> "/"
 
+let string_of_header header = 
+  let prefix = match fst header with
+    | "" -> ""
+    | x -> x ^ "."
+  in prefix ^ snd header
+
 let string_of_atom atom = 
   match atom with 
   | Attribute x -> string_of_header x

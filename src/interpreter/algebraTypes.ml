@@ -1,11 +1,5 @@
 type header = string * string
 
-let string_of_header header = 
-  let prefix = match fst header with
-    | "" -> ""
-    | x -> x ^ "."
-  in prefix ^ snd header
-
 type expression =
   | AlgBinOp of Ast.binop * expression * expression
   | AlgAtom of Ast.atom

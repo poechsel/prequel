@@ -1,22 +1,11 @@
 class projection (sub : AlgebraTypes.feed_interface) ( headers : AlgebraTypes.header list ) =
   let all_headers = sub#headers in
-  let _ = List.iter (fun x -> 
-      let s = match fst x with 
-          | "" -> ""
-          | x -> x ^ "."
-      in Printf.printf "%s | " (s ^ snd x)
-    ) all_headers in
-  let _ = List.iter (fun x -> 
-      let s = match fst x with 
-          | "" -> ""
-          | x -> x ^ "."
-      in Printf.printf "%s | " (s ^ snd x)
-    ) headers in
-  let _ = Printf.printf "\n" in
   let keep = List.filter (fun x -> x >= 0) 
       (List.mapi (fun i x ->
            if List.exists (fun a -> a = x) headers then i
-           else -1
+           else raise (Errors.InterpretationError 
+                         (Printf.sprintf "Attribute \"%s\" doesn't exists" (snd x))
+                      )
          ) all_headers) in
 
   object(self)

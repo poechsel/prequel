@@ -23,13 +23,13 @@ let parse_line ?(with_endline=true) lexbuf =
     end
 
 let clean_ast ast = 
-  let ast = Checker.check_coherence ast in
-  let ast = Checker.rename_tables ast in
-  let ast_disj = Transformers.disjunction ast in
+  let ast = AstChecker.check_coherence ast in
+  let ast = AstChecker.rename_tables ast in
+  let ast_disj = AstTransformers.disjunction ast in
   ast_disj
 
 let compile_and_optimize ast =
-  let alg = Naivecompiler.naive_compiler ast in
+  let alg = Compiler.compile ast in
   alg
 
 
@@ -54,10 +54,17 @@ let repl params =
     let _ = try
         let ast = parse_line lexbuf in
         action params ast
-      with ParsingError x ->
+      with 
+      | ParsingError x ->
         let _ = Lexing.flush_input lexbuf in 
         let _ = Parsing.clear_parser () in 
         let _ = print_endline x in 
+        ()
+      | BadQuery x ->
+        let _ = print_endline x in
+        ()
+      | InterpretationError x ->
+        let _ = print_endline x in
         ()
     in 
     aux ()
@@ -78,7 +85,13 @@ let _ =
   if !(params.repl) || !(params.request) = "" then 
       repl params
     else 
-      let input_channel = open_in !(params.request) in
+      let input_channel = 
+        try
+          open_in !(params.request)
+        with e ->
+          Printf.printf "File \"%s\" doesn't exists" !(params.request);
+          exit 1
+      in
   let lexbuf = Lexing.from_channel input_channel in
   let ast = parse_line ~with_endline:false lexbuf in
   action params ast
