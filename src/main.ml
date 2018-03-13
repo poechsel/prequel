@@ -5,6 +5,7 @@ open Errors
 
 open MetaQuery
 
+type params = {repl: bool ref; out: string ref; request: string ref; graphviz: string ref}
 
 let parse_line lexbuf =
   (* parse a line from a corresponding buffer of tokens
@@ -18,31 +19,45 @@ let parse_line lexbuf =
       raise (send_parsing_error (Lexing.lexeme_start_p lexbuf) tok)
     end
 
+let clean_ast ast = 
+  let ast = Checker.check_coherence ast in
+  let ast = Checker.rename_tables ast in
+  let ast_disj = Transformers.disjunction ast in
+  ast_disj
+
+let compile_and_optimize ast =
+  let alg = Naivecompiler.naive_compiler ast in
+  alg
 
 
-let action ast = 
+let action params ast = 
   (* the main body defining the different operations made to execute a sql query
      @Param ast: a parsed sql query
     *)
-  let _ = Transformers.identity ast in
-  print_string "hello world"
+  let ast = clean_ast ast in
+  let alg = compile_and_optimize ast in
+  let _ = if !(params.graphviz) <> "" then Debug.graphviz_of_algebra !(params.graphviz) alg in
+  let feed = MetaQuery.feed_from_query alg in
+  let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
+  let _ = feed#save out_channel in
+  ()
 
 
-let repl () = 
+let repl params = 
   (* Repl interfact *)
   let lexbuf = Lexing.from_channel stdin in
   let rec aux () = 
-       let _ = print_string ">> "; flush stdout in 
-       let _ = try
+    let _ = print_string ">> "; flush stdout in 
+    let _ = try
         let ast = parse_line lexbuf in
-          action ast
-        with ParsingError x ->
-          let _ = Lexing.flush_input lexbuf in 
-          let _ = Parsing.clear_parser () in 
-          let _ = print_endline x in 
-          ()
-       in 
-       aux ()
+        action params ast
+      with ParsingError x ->
+        let _ = Lexing.flush_input lexbuf in 
+        let _ = Parsing.clear_parser () in 
+        let _ = print_endline x in 
+        ()
+    in 
+    aux ()
   in 
   aux ();;
 
@@ -51,7 +66,15 @@ let repl () =
   select * from test;
   *)
 
+
 let _ = 
+  let params = {repl = ref false; out = ref ""; request = ref ""; graphviz = ref ""} in
+  let speclist = [
+    "-repl", Arg.Set params.repl, "use the repl mode"
+    ; "-o", Arg.Set_string params.out, "file in which to write the output"
+    ; "-graphviz", Arg.Set_string params.graphviz, "generate a graphviz plot of the relationnal algebra tree"
+  ] in
+  let () = Arg.parse speclist ((:=) params.request) "MinSQl" in
   let query = "select test.Title2 from \"test.csv\" test, \"test2.csv\" test2 where test.Title1 + 1 = 2;" in
   let query = "select foo.Title2 from (SELECT * from \"test.csv\" test, \"test2.csv\" test2 where test.Title1 + 1 = 2) AS foo;" in
   let query = "SELECT e.nom, d.nom FROM \"employes.csv\" e, \"departements.csv\" d WHERE e.dpt = d.idd;" in
@@ -77,6 +100,7 @@ let _ =
 "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN (SELECT * FROM (SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND e.dpt = ds.idd) foo);" in*)
 
   let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide AND ds.idd IN (SELECT v.dpt FROM \"employes.csv\" v WHERE e.dpt = ds.idd and v.dpt = 1));" in 
+  let query =    "SELECT e.dpt, e.nom FROM \"employes.csv\" e WHERE e.dpt IN ( SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide);" in 
   
   let query = "SELECT p.titre, e.nom FROM \"employes.csv\" e, \"projets.csv\" p, \"membres.csv\" m WHERE e.ide = m.ide AND m.idp = p.idp AND e.dpt NOT IN (SELECT r.dpt FROM \"employes.csv\" r WHERE r.ide = p.responsable);" in
 
@@ -87,20 +111,12 @@ let _ =
 
   (*let query =
     "SELECT s.dpt FROM \"employes.csv\" s, \"departements.csv\" ds WHERE ds.directeur = s.ide;" in *)
+  if !(params.repl) then 
+      repl params
+    else 
   let lexbuf = Lexing.from_string query in
   let ast = parse_line lexbuf in
-  let ast = Checker.check_coherence ast in
-  let ast = Checker.rename_tables ast in
-  let ast_disj = Transformers.disjunction ast in
-  let alg = Naivecompiler.naive_compiler ast_disj in
-  let graphviz_src = Debug.graphviz_of_algebra "test.dot" alg in
-  let feed = MetaQuery.feed_from_query alg in
-  let rec aux () = 
-       match feed#next with
-       | None -> ()
-       | Some i -> List.iter (fun x ->  Printf.printf "%s, " x) i; Printf.printf "\n"; aux ()
-  in aux ()
-  in ()
+  action params ast
 
 
 (*

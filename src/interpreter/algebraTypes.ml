@@ -23,8 +23,19 @@ type algebra =
 type feed_result = string list
 
 class virtual feed_interface =
-  object
+  object(self)
     method virtual next : feed_result option
     method virtual headers : header list
     method virtual reset : unit
+    method save (channel : out_channel) : unit =
+      let rec aux () = 
+        match self#next with
+        | None -> ()
+        | Some x -> 
+          let s = String.concat ", " x in
+          Printf.fprintf channel "%s\n" s;
+          aux ()
+      in let s = String.concat ", " (List.map snd self#headers) in
+      let _ = Printf.fprintf channel "%s\n" s in
+      aux ()
   end
