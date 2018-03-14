@@ -3,9 +3,7 @@ class projection (sub : AlgebraTypes.feed_interface) ( headers : AlgebraTypes.he
   let keep = List.filter (fun x -> x >= 0) 
       (List.mapi (fun i x ->
            if List.exists (fun a -> a = x) headers then i
-           else raise (Errors.InterpretationError 
-                         (Printf.sprintf "Attribute \"%s\" doesn't exists" (snd x))
-                      )
+           else -1 
          ) all_headers) in
 
   object(self)
