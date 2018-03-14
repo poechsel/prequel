@@ -17,6 +17,12 @@ let headers_has_duplicate l =
   List.length @@ List.sort_uniq (Pervasives.compare) l != List.length l
 
 let check_coherence query =
+  (* Check if a given query seems 'coherent'. That means: 
+      - every input csv exists
+      - the tables we are trying to access exists
+      - we do not have conflicts for row names
+      - in and not in subqueries returns only one row
+  *)
   let rec check_query headers query =
     let c_qu = check_query headers in
     match query with
@@ -122,8 +128,11 @@ module Env = Map.Make(struct
     let compare = Pervasives.compare
   end)
 
-(* rename every table to a uuid *)
 let rename_tables query =
+  (* Rename every table to a uid
+     This will allow us, during compilation, to 
+     avoid having to deal with renaming to avoid conflicts 
+  *)
   let uid = ref 0 in
   let ren_attribute env (m, a) =
     if Env.mem m env then
