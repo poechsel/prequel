@@ -39,7 +39,11 @@ let action params ast =
     *)
   let ast = clean_ast ast in
   let alg = compile_and_optimize ast in
-  let _ = if !(params.graphviz) <> "" then Debug.graphviz_of_algebra (open_out !(params.graphviz)) alg in
+  let _ = if !(params.graphviz) <> "" then 
+      let channel = open_out !(params.graphviz) in 
+      let _ = Debug.graphviz_of_algebra channel alg in 
+      close_out channel 
+  in
   let feed = MetaQuery.feed_from_query alg in
   let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
   let _ = feed#save out_channel in
