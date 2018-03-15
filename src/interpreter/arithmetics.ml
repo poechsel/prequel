@@ -6,6 +6,25 @@ let comp_atom a b =
   if a < b then -1 else
     1
 
+
+module Env = struct
+  type t = (string * string) list
+  let rec find env x = 
+    match env with
+    | [] -> failwith "foo"
+    | (a, b)::tl when x=a -> b
+    | _::tl -> find tl x
+
+
+  let rec make headers line = 
+    match headers, line with
+    | [], _ | _, [] -> []
+    | h::tl, h'::tl' -> (h, h') :: make tl tl'
+
+
+
+end 
+
 let comp a b =
   match (a, b) with
   | (Number a), (Number b) -> 
@@ -23,7 +42,12 @@ let rec execute_value expr env =
   | AlgAtom y -> begin
       match y with
       | Attribute y ->
-        String (Hashtbl.find env y)
+        let t = Env.find env y in
+        begin try
+          Number (int_of_string t)
+        with _ -> 
+          String t
+      end 
       | _ -> y
     end
   | AlgBinOp(op, r, l) ->
