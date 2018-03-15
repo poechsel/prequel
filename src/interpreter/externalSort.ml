@@ -29,53 +29,70 @@ let csv_to_file file l =
   close_out channel
 
 
+let tail_map f l = 
+  let rec aux l acc =
+    match l with
+    | [] -> List.rev acc
+    | x::tl -> aux tl (f x :: acc)
+  in aux l []
+
 
 let rec initialize_sort ?(size_chunk=10000000) headers keys feed = 
-  let file_uid = ref 0 in
-  let get_next_file_name () = 
-    let _ = incr file_uid in 
-    Printf.sprintf "temp/sort_%d.csv" (!file_uid)
+  let sort headers keys l = 
+    (* here, tail recursivity is needed. If we take chunks of 10mo, 
+       without tail recursivity, ie with a normal map, ocaml crash with
+       a stackoverfow *)
+    let l = tail_map (fun y -> 
+        let tbl = Arithmetics.Env.make headers y in
+        tail_map (fun x -> Arithmetics.execute_value x tbl) keys,
+        y
+      ) l 
+    in let l = List.sort Pervasives.compare l
+    in tail_map snd l
+
   in 
   let rec aux file_name current_size acc filelist = 
     match feed#next with
     | None ->
       let _ = if acc <> [] then 
-          csv_to_file file_name (List.sort (compare headers keys) (acc)) in
+          csv_to_file file_name (sort headers keys acc) in
       let _ = List.iter (fun x -> Printf.printf "%s\n" x) (file_name::filelist) in
       file_name::filelist
     | Some x ->
       let current_size = current_size + 
                          List.fold_left (fun a b -> a + String.length b + 1) 0 x in
       if current_size > size_chunk then
-        let _ = csv_to_file file_name (List.sort (compare headers keys) (x::acc)) in
-        aux (get_next_file_name ()) 0 [] (file_name::filelist)
+        let _ = csv_to_file file_name (sort headers keys (x::acc)) in
+        aux (Utils.get_next_temp_file ()) 0 [] (file_name::filelist)
       else 
         aux file_name current_size (x::acc) filelist
-  in aux (get_next_file_name ()) 0 [] []
+  in aux (Utils.get_next_temp_file ()) 0 [] []
 
 
 let rec kway_merge_csv_files channel headers keys csvs = 
   let find_min csvs = 
-    let rec aux i csvs (previous_min, previous_value) = 
+    let rec aux i csvs (previous_min, previous_key) = 
       match csvs with 
       | [] -> 
         previous_min
-      | x::tl when compare headers keys (Csv.current_record x) (Csv.current_record previous_value) <= 0 ->
-        aux (i+1) tl (i, x)
+      | (key, x)::tl when Pervasives.compare key previous_key <= 0 ->
+        aux (i+1) tl (i, key)
       | _::tl ->
-        aux (i+1) tl (previous_min, previous_value)
-    in aux 1 (List.tl csvs) (0, List.hd csvs)
+        aux (i+1) tl (previous_min, previous_key)
+    in aux 1 (List.tl csvs) (0, fst @@ List.hd csvs)
 
-  in let update_min min_i csvs =
+  in let update_min min_i csvs headers keys =
        let rec aux i csvs = 
          match csvs with
-         | x::tl when i = min_i ->
+         | (_, x)::tl when i = min_i ->
            begin try
-               let _ = Csv.next x in
-               x::tl
-            with _ ->
-              tl
-          end 
+               let next = Csv.next x in
+               (let tbl = Arithmetics.Env.make headers next in
+                List.map (fun x -> Arithmetics.execute_value x tbl) keys,
+                x) :: tl
+             with _ ->
+               tl
+           end 
          | x::tl ->
            x::(aux (i+1) tl)
          | [] -> []
@@ -87,9 +104,9 @@ let rec kway_merge_csv_files channel headers keys csvs =
          ()
        | _ ->
          let min_i = find_min csvs in
-         let min_csv = List.nth csvs min_i in
+         let min_csv = snd @@ List.nth csvs min_i in
          let () = Printf.fprintf channel "%s\n" (String.concat "," @@ Csv.current_record min_csv) in
-         let csvs = update_min min_i csvs in
+         let csvs = update_min min_i csvs headers keys in
          merge csvs
 
   in merge csvs
@@ -97,14 +114,18 @@ let rec kway_merge_csv_files channel headers keys csvs =
 let external_sort feed headers keys =
   let csvs = initialize_sort headers keys feed in
   let csvs = List.map (fun x -> Csv.of_channel @@ open_in x) csvs in
-  let _ = List.iter (fun x -> Csv.next x; ()) csvs in
-  let output = open_out "temp/final.csv" in
-  let _ = Printf.printf "------\n" in
-  let _ = List.iter (fun (a, b) -> Printf.printf "%s.%s\n" a b) headers in
-  let _ = Printf.printf "------\n" in
+  let csvs = List.map (fun x -> 
+      let y = Csv.next x in
+      let tbl = Arithmetics.Env.make headers y in
+      List.map (fun x -> Arithmetics.execute_value x tbl) keys,
+      x
+    ) csvs in
+  let file = Utils.get_next_temp_file () in
+  let output = open_out file in
+  
   let _ = kway_merge_csv_files output headers keys csvs in
   let _ = close_out output in
-  new InputCachedFile.inputCachedFile "temp/final.csv"
+  new InputCachedFile.inputCachedFile file
 
 
 
