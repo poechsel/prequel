@@ -30,7 +30,7 @@ let csv_to_file file l =
 
 
 
-let rec initialize_sort ?(size_chunk=65335) headers keys feed = 
+let rec initialize_sort ?(size_chunk=10000000) headers keys feed = 
   let file_uid = ref 0 in
   let get_next_file_name () = 
     let _ = incr file_uid in 
@@ -38,7 +38,11 @@ let rec initialize_sort ?(size_chunk=65335) headers keys feed =
   in 
   let rec aux file_name current_size acc filelist = 
     match feed#next with
-    | None -> filelist
+    | None ->
+      let _ = if acc <> [] then 
+          csv_to_file file_name (List.sort (compare headers keys) (acc)) in
+      let _ = List.iter (fun x -> Printf.printf "%s\n" x) (file_name::filelist) in
+      file_name::filelist
     | Some x ->
       let current_size = current_size + 
                          List.fold_left (fun a b -> a + String.length b + 1) 0 x in
@@ -56,7 +60,7 @@ let rec kway_merge_csv_files channel headers keys csvs =
       match csvs with 
       | [] -> 
         previous_min
-      | x::tl when compare  headers keys (Csv.current_record x) (Csv.current_record previous_value) <= 0 ->
+      | x::tl when compare headers keys (Csv.current_record x) (Csv.current_record previous_value) <= 0 ->
         aux (i+1) tl (i, x)
       | _::tl ->
         aux (i+1) tl (previous_min, previous_value)
@@ -93,7 +97,11 @@ let rec kway_merge_csv_files channel headers keys csvs =
 let external_sort feed headers keys =
   let csvs = initialize_sort headers keys feed in
   let csvs = List.map (fun x -> Csv.of_channel @@ open_in x) csvs in
+  let _ = List.iter (fun x -> Csv.next x; ()) csvs in
   let output = open_out "temp/final.csv" in
+  let _ = Printf.printf "------\n" in
+  let _ = List.iter (fun (a, b) -> Printf.printf "%s.%s\n" a b) headers in
+  let _ = Printf.printf "------\n" in
   let _ = kway_merge_csv_files output headers keys csvs in
   let _ = close_out output in
   new InputCachedFile.inputCachedFile "temp/final.csv"
@@ -108,8 +116,22 @@ class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression li
 
     val mutable initialized = false
     val mutable cache = []
+    val mutable sub = sub
     
     method next = 
+      let _ = if initialized = false then
+        let _ = initialized <- true in
+        let headers = self#headers in
+        let _ = sub <- external_sort sub headers keys in ()
+      in 
+      sub#next
+
+    method reset = 
+      sub#reset
+
+    method headers = 
+      sub#headers
+      (*
       let _ = 
         if initialized = false then
           let _ = initialized <- true in
@@ -135,4 +157,5 @@ class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression li
 
     method headers =
       sub#headers
+    *)
   end

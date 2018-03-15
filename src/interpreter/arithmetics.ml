@@ -10,10 +10,13 @@ let comp_atom a b =
 module Env = struct
   type t = (string * string) list
   let rec find env x = 
-    match env with
-    | [] -> failwith "foo"
+    let rec find env' x = 
+      let _ = if env' = [] then print_string "zeitoetio\n" in
+    match env' with
+    | [] -> let _ = List.iter (fun (x, y) -> Printf.printf "%s.%s\n" (fst x) (snd x)) env in failwith "foo"
     | (a, b)::tl when x=a -> b
     | _::tl -> find tl x
+    in find env x
 
 
   let rec make headers line = 
