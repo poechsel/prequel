@@ -37,8 +37,77 @@ let tail_map f l =
     | x::tl -> aux tl (f x :: acc)
   in aux l []
 
+module PriorityQueue = struct
+    type d = Ast.atom list * Csv.in_channel
+    type t = { mutable size : int; data : d array; comp : d -> d -> int}
 
-let rec initialize_sort ?(size_chunk=65335(*10000000*)) headers keys feed = 
+    let make n comp =
+      let rec next_pow_two acc = 
+        if acc < n then
+          next_pow_two (2 * acc)
+        else acc
+      in 
+      { size = 0; data = Array.make (next_pow_two n) (Obj.magic ()); comp = comp }
+
+    let parent i = (i-1) / 2
+
+    let left i = 2 * i + 1
+
+    let right i = 2 * i + 2
+
+    let swap heap i j =
+        let temp = heap.data.(i) in
+        let _ = heap.data.(i) <- heap.data.(j) in
+        let _ = heap.data.(j) <- temp in
+        ()
+
+    let rec down_heap heap i = 
+      let smallest = i in
+      let smallest = if left i < heap.size && heap.comp (heap.data.(left i)) (heap.data.(i)) < 0 then
+          left i
+        else 
+          smallest
+      in 
+      let smallest = if right i < heap.size && heap.comp (heap.data.(right i)) (heap.data.(i)) < 0 then
+          right i
+        else 
+          smallest
+      in if smallest != i then
+        let _ = swap heap i smallest in
+        down_heap heap smallest
+
+    let rec up_heap heap i = 
+      if i != 0 then
+        let f = parent i in
+        if heap.comp (heap.data.(f)) (heap.data.(i)) >= 0 then
+          let _ = swap heap i f in
+        up_heap heap f
+
+    let insert heap element = 
+      let _ = heap.data.(heap.size) <- element in
+      let _ = heap.size <- heap.size + 1 in 
+      let _ = up_heap heap (heap.size-1) in
+      ()
+
+    let get_size t = t.size
+
+
+    let pop heap = 
+      let e = heap.data.(0) in
+      let _ = heap.size <- heap.size - 1 in
+      let _ = heap.data.(0) <- heap.data.(heap.size) in
+      let _ = down_heap heap 0 in
+      e
+
+    let dump heap = 
+      for i = 0 to heap.size - 1 do
+        Printf.printf "%d  " (let Ast.Number(x) :: _, _ = heap.data.(i) in x)
+      done ;
+      Printf.printf "\n"
+end 
+
+
+let rec initialize_sort ?(size_chunk=10000000) headers keys feed = 
   let sort headers keys l = 
     (* sort a list in memory efficiently *)
     (* here, tail recursivity is needed. If we take chunks of 10mo, 
@@ -75,40 +144,25 @@ let rec initialize_sort ?(size_chunk=65335(*10000000*)) headers keys feed =
   in aux (Utils.get_next_temp_file ()) 0 [] []
 
 
-let rec kway_merge channel headers keys csvs = 
-  let find_min csvs = 
-    (* find the minimum element *)
-    let rec aux i csvs (previous_min, previous_key) = 
-      match csvs with 
-      | [] -> 
-        previous_min
-      | (key, x)::tl when Pervasives.compare key previous_key <= 0 ->
-        aux (i+1) tl (i, key)
-      | _::tl ->
-        aux (i+1) tl (previous_min, previous_key)
-    in aux 1 (List.tl csvs) (0, fst @@ List.hd csvs)
-
-  in let update_min min_i csvs headers keys =
-       (* update the minimum value so that it points toward its next entry.
-          If their is no next entries, remove it *)
-       let rec aux i csvs = 
-         match csvs with
-         | (_, x)::tl when i = min_i ->
-           begin try
-               let next = Csv.next x in
-               (let tbl = Arithmetics.Env.make headers next in
-                List.map (fun x -> Arithmetics.execute_value x tbl) keys,
-                x) :: tl
-             with _ ->
-               tl
-           end 
-         | x::tl ->
-           x::(aux (i+1) tl)
-         | [] -> []
-       in aux 0 csvs
-
-  in let rec merge csvs = 
-       (* merge the db contained into the csv of csvs. Save it to channel*)
+let rec kway_merge channel headers keys t = 
+  let rec merge t = 
+    (* merge the db contained into the csv of csvs. Save it to channel*)
+    match PriorityQueue.get_size t with
+    | 0 -> 
+      ()
+    | _ ->
+      let _, min_csv = PriorityQueue.pop t in
+         let () = Printf.fprintf channel "%s\n" (String.concat ", " @@ Csv.current_record min_csv) in
+      let _ = begin try
+          let next = Csv.next min_csv in
+          let append = (let tbl = Arithmetics.Env.make headers next in
+                        List.map (fun x -> Arithmetics.execute_value x tbl) keys,
+                        min_csv)
+          in PriorityQueue.insert t append
+        with _ -> ()
+      end
+      in merge t
+           (*
        match csvs with
        | [] -> 
          ()
@@ -118,8 +172,8 @@ let rec kway_merge channel headers keys csvs =
          let () = Printf.fprintf channel "%s\n" (String.concat ", " @@ Csv.current_record min_csv) in
          let csvs = update_min min_i csvs headers keys in
          merge csvs
-  in merge csvs
-
+           *)
+  in merge t
 
 let rec submerges ?(sub_groups_size=10) headers keys csvs =
   let split_groups n csvs = 
@@ -150,10 +204,14 @@ let rec submerges ?(sub_groups_size=10) headers keys csvs =
           List.map (fun x -> Arithmetics.execute_value x tbl) keys,
           x
         ) csvs in
+      let t = PriorityQueue.make (List.length group) (fun a b -> Pervasives.compare (fst a) (fst b)) in
+      let _ = List.iter (fun x ->
+        PriorityQueue.insert t x
+        ) csvs in
       let file = Utils.get_next_temp_file () in
       let output = open_out file in
       let _ = Printf.fprintf output "%s\n" (String.concat "," (List.map snd headers)) in
-      let _ = kway_merge output headers keys csvs in
+      let _ = kway_merge output headers keys t in
       let _ = close_out output in
       let _ = List.iter (fun x -> let _ = Printf.printf "removing %s\n" x in Sys.remove x) group in
       let _ = flush stdout in
