@@ -23,8 +23,9 @@ let rec csv_of_list channel l =
             |> Printf.fprintf channel "%s\n" 
     in csv_of_list channel t
 
-let csv_to_file file l =
+let csv_to_file headers file l =
   let channel = open_out file in
+let _ = Printf.fprintf channel "%s\n" (String.concat "," (List.map snd headers)) in
   let () = csv_of_list channel l in
   close_out channel
 
@@ -59,7 +60,7 @@ let rec initialize_sort ?(size_chunk=65335(*10000000*)) headers keys feed =
     match feed#next with
     | None ->
       let _ = if acc <> [] then 
-          csv_to_file file_name (sort headers keys acc) in
+          csv_to_file headers file_name (sort headers keys acc) in
       let _ = List.iter (fun x -> Printf.printf "%s\n" x) (file_name::filelist) in
       file_name::filelist
     | Some x ->
@@ -67,7 +68,7 @@ let rec initialize_sort ?(size_chunk=65335(*10000000*)) headers keys feed =
       if current_size > size_chunk then
         let _ = Printf.printf "creating new chunk\n" in let _ = flush stdout in
         (* if the current chunk is larger than the authorized size, create a new file *)
-        let _ = csv_to_file file_name (sort headers keys (x::acc)) in
+        let _ = csv_to_file headers file_name (sort headers keys (x::acc)) in
         aux (Utils.get_next_temp_file ()) 0 [] (file_name::filelist)
       else 
         aux file_name current_size (x::acc) filelist
@@ -142,7 +143,7 @@ let rec submerges ?(sub_groups_size=10) headers keys csvs =
   in let _ = flush stdout in 
   let all_files = List.map (fun group ->
       let _ = Printf.printf "switching to next group\n" in let _ = flush stdout in 
-      let csvs = List.map (fun x -> Csv.of_channel @@ open_in x) group in
+      let csvs = List.map (fun x -> Csv.of_channel ~has_header:true (open_in x)) group in
       let csvs = List.map (fun x -> 
           let y = Csv.next x in
           let tbl = Arithmetics.Env.make headers y in
@@ -151,6 +152,7 @@ let rec submerges ?(sub_groups_size=10) headers keys csvs =
         ) csvs in
       let file = Utils.get_next_temp_file () in
       let output = open_out file in
+      let _ = Printf.fprintf output "%s\n" (String.concat "," (List.map snd headers)) in
       let _ = kway_merge output headers keys csvs in
       let _ = close_out output in
       let _ = List.iter (fun x -> let _ = Printf.printf "removing %s\n" x in Sys.remove x) group in
