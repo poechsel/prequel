@@ -1,22 +1,3 @@
-let rec csv_of_list channel l = 
-  (* returns unit. Write a list of string to a channel
-     in the form of a csv *)
-  match l with 
-  | [] -> ()
-  | h::t -> 
-    let _ = String.concat ", " h
-            |> output_string channel
-    in let _ = output_string channel "\n"
-    in csv_of_list channel t
-
-let csv_to_file headers file l =
-  let channel = open_out file in
-  let _ = output_string channel (String.concat "," (List.map snd headers)) in
-  let _ = output_string channel "\n" in 
-  let () = csv_of_list channel l in
-  close_out channel
-
-
 let tail_map f l = 
   let rec aux l acc =
     match l with
@@ -29,40 +10,59 @@ let evaluate_row headers keys row =
   let tbl = Arithmetics.Env.make headers row in
   Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys
 
-let rec initialize_sort ?(size_chunk=(1 lsl 22)) headers keys feed = 
-  let sort headers keys l = 
-    (* sort a list in memory efficiently *)
-    (* here, tail recursivity is needed. If we take chunks of 10mo, 
-       without tail recursivity, ie with a normal map, ocaml crash with
-       a stackoverfow *)
-    let l = Faster_map.faster_map (fun y -> 
-        evaluate_row headers keys y, y
-      ) l 
-    in let l = List.sort Pervasives.compare l
-    in Faster_map.faster_map snd l
+let csv_to_file headers file offset buffer=
+  let channel = open_out file in
+  let _ = output_string channel (String.concat "," (List.map snd headers)) in
+  let _ = output_string channel "\n" in 
+  let _ = 
+    for i = offset to Array.length buffer - 1 do
+      let _ = String.concat ", " @@ snd buffer.(i)
+              |> output_string channel
+      in output_string channel "\n"
+    done in
+  close_out channel
+
+let rec initialize_sort ?(size_chunk=(1 lsl 20)) headers keys feed = 
+  (* to initialize our exeternal sort, we sort some small parts of the file
+     Because Array.sort is far more efficient than List.sort, we use an array buffer
+     to store everything we need *)
+  let buffer = Array.make size_chunk (Obj.magic ()) in
+  let sort headers keys = 
+    Array.fast_sort (fun a b -> Pervasives.compare (fst a) (fst b)) buffer 
 
   in 
-  let rec aux file_name current_size acc filelist = 
+  let rec aux file_name current_size filelist = 
     (* split the file into basic 'blocks' who are sorted in memory, then saved.
         Returns a list of file names representing these chunks
     *)
     match feed#next with
-    | None when acc <> [] ->
-      let _ = csv_to_file headers file_name (sort headers keys acc) in
+    | None when current_size > 0 ->
+      let _ = 
+        for i = current_size to size_chunk - 1 do
+          (* only the start of the buffer is filled there.
+             Because ocaml's sort can't sort between two indexes, we fill the
+             buffer with values that are small: they will be placed on the 
+             start of the buffer *)
+          buffer.(i) <- ([], [])
+        done in
+      let _ = sort headers keys in
+      let _ = csv_to_file headers file_name (size_chunk - current_size) buffer in
       file_name::filelist
     | Some x ->
-      let current_size = current_size + List.fold_left (fun a b -> a + String.length b + 1) 0 x in
-      if current_size > size_chunk then
+      let () = buffer.(current_size) <- evaluate_row headers keys x, x in
+      if current_size + 1 = size_chunk then
         (* if the current chunk is larger than the authorized size, create a new file *)
-        let _ = csv_to_file headers file_name (sort headers keys (x::acc)) in
-        aux (Utils.get_next_temp_file ()) 0 [] (file_name::filelist)
+        let _ = sort headers keys in
+        let _ = csv_to_file headers file_name 0 buffer in
+        aux (Utils.get_next_temp_file ()) 0 (file_name::filelist)
       else 
-        aux file_name current_size (x::acc) filelist
+        aux file_name (current_size + 1) filelist
     | _ -> filelist
-  in aux (Utils.get_next_temp_file ()) 0 [] []
+  in aux (Utils.get_next_temp_file ()) 0 []
 
 
 let rec kway_merge channel headers keys t = 
+  (* merge k streams using a priority queue *)
   while PriorityQueue.get_size t > 0 do
     let _, min_csv = PriorityQueue.pop t in
     let () = output_string channel (String.concat ", " @@ Csv.current_record min_csv); output_string channel "\n" in
@@ -77,6 +77,7 @@ let rec kway_merge channel headers keys t =
   done 
 
 let rec submerges ?(sub_groups_size=256) headers keys csvs =
+  (* will merge all the subfolders by batch of size at most sub_groups_size *)
   let split_groups n csvs = 
     let rec aux i l groups current = 
       match l with
@@ -94,7 +95,6 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
   in 
   let subgroups = split_groups sub_groups_size csvs in
   let all_files = List.map (fun group ->
-      let _ = Printf.printf "switching to next group\n" in let _ = flush stdout in 
       let t = PriorityQueue.make (List.length group) (fun a b -> Pervasives.compare (fst a) (fst b)) in
       let _ = List.iter (fun file ->
           let csv = Csv.of_channel ~has_header:true (open_in file) in
@@ -117,18 +117,9 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
 
 
 let external_sort feed headers keys =
-  let start = Unix.gettimeofday() in
-  let _ = Printf.printf "FIRST STEP\n" in let _ = flush stdout in
   let csvs = initialize_sort headers keys feed in
- let stop = Unix.gettimeofday ()
-    in let () = Printf.printf "Execution time: %fs\n%!" (stop -. start) in
-  let _ = Printf.printf "SECOND STEP\n" in let _ = flush stdout in
-  let start = Unix.gettimeofday() in
   let file = submerges headers keys csvs in
- let stop = Unix.gettimeofday ()
-    in let () = Printf.printf "Execution time: %fs\n%!" (stop -. start) in
   new InputCachedFile.inputCachedFile file
-
 
 
 
