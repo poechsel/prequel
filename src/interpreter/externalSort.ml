@@ -20,12 +20,14 @@ let rec csv_of_list channel l =
   | [] -> ()
   | h::t -> 
     let _ = String.concat ", " h
-            |> Printf.fprintf channel "%s\n" 
+            |> output_string channel
+    in let _ = output_string channel "\n"
     in csv_of_list channel t
 
 let csv_to_file headers file l =
   let channel = open_out file in
-let _ = Printf.fprintf channel "%s\n" (String.concat "," (List.map snd headers)) in
+  let _ = output_string channel (String.concat "," (List.map snd headers)) in
+  let _ = output_string channel "\n" in 
   let () = csv_of_list channel l in
   close_out channel
 
@@ -107,7 +109,7 @@ module PriorityQueue = struct
 end 
 
 
-let rec initialize_sort ?(size_chunk=10000000) headers keys feed = 
+let rec initialize_sort ?(size_chunk=(1 lsl 22)) headers keys feed = 
   let sort headers keys l = 
     (* sort a list in memory efficiently *)
     (* here, tail recursivity is needed. If we take chunks of 10mo, 
@@ -152,7 +154,7 @@ let rec kway_merge channel headers keys t =
       ()
     | _ ->
       let _, min_csv = PriorityQueue.pop t in
-         let () = Printf.fprintf channel "%s\n" (String.concat ", " @@ Csv.current_record min_csv) in
+      let () = output_string channel (String.concat ", " @@ Csv.current_record min_csv); output_string channel "\n" in
       let _ = begin try
           let next = Csv.next min_csv in
           let append = (let tbl = Arithmetics.Env.make headers next in
@@ -175,7 +177,7 @@ let rec kway_merge channel headers keys t =
            *)
   in merge t
 
-let rec submerges ?(sub_groups_size=10) headers keys csvs =
+let rec submerges ?(sub_groups_size=256) headers keys csvs =
   let split_groups n csvs = 
     let rec aux i l groups current = 
       match l with
@@ -209,10 +211,14 @@ let rec submerges ?(sub_groups_size=10) headers keys csvs =
         PriorityQueue.insert t x
         ) csvs in
       let file = Utils.get_next_temp_file () in
+ let start = Unix.gettimeofday () in
       let output = open_out file in
-      let _ = Printf.fprintf output "%s\n" (String.concat "," (List.map snd headers)) in
+      let _ = output_string output (String.concat "," (List.map snd headers)) in
+      let _ = output_string output "\n" in
       let _ = kway_merge output headers keys t in
       let _ = close_out output in
+ let stop = Unix.gettimeofday ()
+    in let () = Printf.printf "Execution time: %fs\n%!" (stop -. start) in
       let _ = List.iter (fun x -> let _ = Printf.printf "removing %s\n" x in Sys.remove x) group in
       let _ = flush stdout in
       file
@@ -224,10 +230,16 @@ let rec submerges ?(sub_groups_size=10) headers keys csvs =
 
 
 let external_sort feed headers keys =
+  let start = Unix.gettimeofday() in
   let _ = Printf.printf "FIRST STEP\n" in let _ = flush stdout in
   let csvs = initialize_sort headers keys feed in
+ let stop = Unix.gettimeofday ()
+    in let () = Printf.printf "Execution time: %fs\n%!" (stop -. start) in
   let _ = Printf.printf "SECOND STEP\n" in let _ = flush stdout in
+  let start = Unix.gettimeofday() in
   let file = submerges headers keys csvs in
+ let stop = Unix.gettimeofday ()
+    in let () = Printf.printf "Execution time: %fs\n%!" (stop -. start) in
   new InputCachedFile.inputCachedFile file
   (*
   let csvs = List.map (fun x -> Csv.of_channel @@ open_in x) csvs in
