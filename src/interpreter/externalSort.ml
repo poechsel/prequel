@@ -115,13 +115,13 @@ let rec initialize_sort ?(size_chunk=(1 lsl 22)) headers keys feed =
     (* here, tail recursivity is needed. If we take chunks of 10mo, 
        without tail recursivity, ie with a normal map, ocaml crash with
        a stackoverfow *)
-    let l = tail_map (fun y -> 
+    let l = Faster_map.faster_map (fun y -> 
         let tbl = Arithmetics.Env.make headers y in
-        tail_map (fun x -> Arithmetics.execute_value x tbl) keys,
+        Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys,
         y
       ) l 
     in let l = List.sort Pervasives.compare l
-    in tail_map snd l
+    in Faster_map.faster_map snd l
 
   in 
   let rec aux file_name current_size acc filelist = 
