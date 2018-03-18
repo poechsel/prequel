@@ -14,7 +14,7 @@ let array_find el ar =
 let temp_file_uid = ref 0
 let get_next_temp_file () = 
   let _ = incr temp_file_uid in
-  Printf.sprintf "tmp/tmp_%d.csv" !temp_file_uid
+  Printf.sprintf "tmp/tmp_%d" !temp_file_uid
 
 let merge_list fct l = 
   if List.length l = 1 then 

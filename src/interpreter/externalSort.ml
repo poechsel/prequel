@@ -10,19 +10,15 @@ let evaluate_row headers keys row =
   let tbl = Arithmetics.Env.make headers row in
   Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys
 
-let csv_to_file headers file offset buffer=
-  let channel = open_out file in
-  let _ = output_string channel (String.concat "," (List.map snd headers)) in
-  let _ = output_string channel "\n" in 
+let to_file headers file offset buffer=
+  let channel = open_out_bin file in
   let _ = 
     for i = offset to Array.length buffer - 1 do
-      let _ = String.concat ", " @@ snd buffer.(i)
-              |> output_string channel
-      in output_string channel "\n"
+      Marshal.to_channel channel buffer.(i) [Marshal.No_sharing]
     done in
   close_out channel
 
-let rec initialize_sort ?(size_chunk=(1 lsl 20)) headers keys feed = 
+let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed = 
   (* to initialize our exeternal sort, we sort some small parts of the file
      Because Array.sort is far more efficient than List.sort, we use an array buffer
      to store everything we need *)
@@ -31,7 +27,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 20)) headers keys feed =
     Array.fast_sort (fun a b -> Pervasives.compare (fst a) (fst b)) buffer 
 
   in 
-  let rec aux file_name current_size filelist = 
+  let rec aux current_size filelist = 
     (* split the file into basic 'blocks' who are sorted in memory, then saved.
         Returns a list of file names representing these chunks
     *)
@@ -46,31 +42,34 @@ let rec initialize_sort ?(size_chunk=(1 lsl 20)) headers keys feed =
           buffer.(i) <- ([], [])
         done in
       let _ = sort headers keys in
-      let _ = csv_to_file headers file_name (size_chunk - current_size) buffer in
+      let file_name = Utils.get_next_temp_file () in
+      let _ = to_file headers file_name (size_chunk - current_size) buffer in
       file_name::filelist
     | Some x ->
       let () = buffer.(current_size) <- evaluate_row headers keys x, x in
       if current_size + 1 = size_chunk then
         (* if the current chunk is larger than the authorized size, create a new file *)
         let _ = sort headers keys in
-        let _ = csv_to_file headers file_name 0 buffer in
-        aux (Utils.get_next_temp_file ()) 0 (file_name::filelist)
+        let file_name = Utils.get_next_temp_file () in
+        let _ = to_file headers file_name 0 buffer in
+        aux 0 (file_name::filelist)
       else 
-        aux file_name (current_size + 1) filelist
+        aux (current_size + 1) filelist
     | _ -> filelist
-  in aux (Utils.get_next_temp_file ()) 0 []
+  in aux 0 []
 
 
-let rec kway_merge channel headers keys t = 
+let rec kway_merge ?(write_to_csv=false) channel headers keys t = 
   (* merge k streams using a priority queue *)
   while PriorityQueue.get_size t > 0 do
-    let _, min_csv = PriorityQueue.pop t in
-    let () = output_string channel (String.concat ", " @@ Csv.current_record min_csv); output_string channel "\n" in
+    let el, min_csv = PriorityQueue.pop t in
+    let () = 
+      if write_to_csv then (output_string channel (String.concat ", " @@ snd el); output_string channel "\n") 
+      else Marshal.to_channel channel min_csv [Marshal.No_sharing]
+    in
     begin try
-        let next = Csv.next min_csv in
-        let append = (let tbl = Arithmetics.Env.make headers next in
-                      List.map (fun x -> Arithmetics.execute_value x tbl) keys,
-                      min_csv)
+        let next = Marshal.from_channel min_csv in
+        let append = (next, min_csv)
         in PriorityQueue.insert t append
       with _ -> ()
     end
@@ -97,15 +96,22 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
   let all_files = List.map (fun group ->
       let t = PriorityQueue.make (List.length group) (fun a b -> Pervasives.compare (fst a) (fst b)) in
       let _ = List.iter (fun file ->
-          let csv = Csv.of_channel ~has_header:true (open_in file) in
-          let row = Csv.next csv in
-          (evaluate_row headers keys row, csv)
+          let channel = open_in_bin file in
+          let el = Marshal.from_channel channel in
+          (el, channel)
           |> PriorityQueue.insert t 
         ) group in
+      let write_to_csv = List.length subgroups = 1 in
       let file = Utils.get_next_temp_file () in
-      let output = open_out file in
-      let _ = output_string output (String.concat "," (List.map snd headers)); output_string output "\n" in
-      let _ = kway_merge output headers keys t in
+      let output = 
+        if write_to_csv then begin
+          let output = open_out file in
+          output_string output (String.concat "," (List.map snd headers));
+          output_string output "\n";
+          output;
+        end else 
+          open_out_bin file in
+      let _ = kway_merge output headers keys t ~write_to_csv:write_to_csv in
       let _ = close_out output in
       let _ = List.iter Sys.remove group in
       file
