@@ -45,8 +45,7 @@ let action params ast =
       close_out channel 
   in
   let feed = MetaQuery.feed_from_query alg in
-  (*let feed = new ExternalSort.sort (feed) ([AlgAtom(Attribute("1", "id"))]) in*)
-  let feed = new ExternalSort.sort (feed) ([AlgAtom(Attribute("1", "id1")); AlgAtom(Attribute("1","id2"))]) in
+  (*let feed = new ExternalSort.sort (feed) ([AlgAtom(Attribute("1", "id1")); AlgAtom(Attribute("1","id2"))]) in*)
   let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
   let _ = feed#save out_channel in
   ()
@@ -101,3 +100,5 @@ let _ =
   let lexbuf = Lexing.from_channel input_channel in
   let ast = parse_line ~with_endline:false lexbuf in
   action params ast
+
+let _ = TempManager.remove_all_temp ()

@@ -42,7 +42,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
           buffer.(i) <- ([], [])
         done in
       let _ = sort headers keys in
-      let file_name = Utils.get_next_temp_file () in
+      let file_name = TempManager.new_temp () in
       let _ = to_file headers file_name (size_chunk - current_size) buffer in
       file_name::filelist
     | Some x ->
@@ -50,7 +50,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
       if current_size + 1 = size_chunk then
         (* if the current chunk is larger than the authorized size, create a new file *)
         let _ = sort headers keys in
-        let file_name = Utils.get_next_temp_file () in
+        let file_name = TempManager.new_temp () in
         let _ = to_file headers file_name 0 buffer in
         aux 0 (file_name::filelist)
       else 
@@ -102,7 +102,7 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
           |> PriorityQueue.insert t 
         ) group in
       let write_to_csv = List.length subgroups = 1 in
-      let file = Utils.get_next_temp_file () in
+      let file = TempManager.new_temp () in
       let output = 
         if write_to_csv then begin
           let output = open_out file in
@@ -113,7 +113,7 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
           open_out_bin file in
       let _ = kway_merge output headers keys t ~write_to_csv:write_to_csv in
       let _ = close_out output in
-      let _ = List.iter Sys.remove group in
+      let _ = List.iter TempManager.remove_temp group in
       file
     ) subgroups
   in if List.length all_files = 1 then
