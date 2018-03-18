@@ -80,25 +80,14 @@ let compile query =
   and compile_where_clause source cond =
     match cond with
     | None -> source
-    | Some (pure, sub) -> 
-      (* first, we compile the pure part: we can convert it directly to a boolean expression *)
-      let layer = 
-        if List.length pure > 0 then
-          let pure =
-            List.map (fun x ->
-                List.map alg_expr_of_ast_expr x 
-                |> merge_list (fun a b -> AlgBinOp(And, a, b))
-              ) pure
-            |> merge_list (fun a b -> AlgBinOp(Or, a, b))
-          in AlgSelect(source, pure) 
-        else source
-      in 
+    | Some (disjunctive_clauses) -> 
+      let layer = source in
       (* to compile the part composed of "subqueries", we use to remarks:
          - a or can be converted with a union
          - select_cond1(select_cond2(...)) = select_(cond1/\cond2)(...)
             This remark could be usefull for optimisations
       *)
-      if List.length sub > 0 then 
+      if List.length disjunctive_clauses > 0 then 
         let attr_from_select s = match s with 
           | (a, b), None 
           | (a, _), Some b -> Attribute (a, b) 
@@ -121,7 +110,7 @@ let compile query =
                compile_query ~project:false (add_condition_to_query query' t) *)
             | y -> AlgSelect(previous, alg_expr_of_ast_expr y)
           ) layer expr
-        in List.map convert_and_in sub
+        in List.map convert_and_in disjunctive_clauses
            |> merge_list (fun a b -> AlgUnion(a, b))
       else layer
 

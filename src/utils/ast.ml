@@ -42,16 +42,10 @@ type 'b cond =
   | AstNotIn of expression * ('b cond, 'b) query
 
 
-(* Here a query seector is represented in a list of tuples of list :
-   Elements of a list are connected through a OR op.
-
-   The left element of a tuple only contains expression without in and not in.
-   The right elements contains expressions with an in or a not in (at least one).
-
-   Expressions are represented as a list of sub-expressions connected by a AND.
-   This is nearly a disjunctive form.
+(* 
+   Expressions are represented with a disjunctive form
 *)
 type 'b disj = 
   | DisjCompOp of binop * expression * expression
-  | DisjIn of expression * ('b disj list list * 'b disj list list, 'b) query
-  | DisjNotIn of expression * ('b disj list list * 'b disj list list, 'b) query
+  | DisjIn of expression * ('b disj list list, 'b) query
+  | DisjNotIn of expression * ('b disj list list, 'b) query
