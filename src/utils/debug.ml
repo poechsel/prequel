@@ -42,7 +42,7 @@ let graphviz_instrs_of_algebra alg =
   let edge_label = format_of_string "%d -> %d [label = \"%s\"]" in
   let rec conv_alg alg =
     match alg with
-    | AlgUnion(a, b) ->
+    | AlgUnion(_, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
@@ -51,7 +51,7 @@ let graphviz_instrs_of_algebra alg =
             @ [Printf.sprintf node !uid "union";
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
-    | AlgMinus(a, b) ->
+    | AlgMinus(_, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
@@ -61,7 +61,7 @@ let graphviz_instrs_of_algebra alg =
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 
-    | AlgProduct(a, b) ->
+    | AlgProduct(_, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
@@ -71,11 +71,11 @@ let graphviz_instrs_of_algebra alg =
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 
-    | AlgInput(name) ->
+    | AlgInput(_, name) ->
       let _ = incr uid in
       !uid, [Printf.sprintf node !uid name]
 
-    | AlgProjection(a, headers) ->
+    | AlgProjection(_, a, headers) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
@@ -84,14 +84,14 @@ let graphviz_instrs_of_algebra alg =
                  (Utils.array_concat "; " (Array.map string_of_header headers))]
 
 
-    | AlgSelect(a, expr) ->
+    | AlgSelect(_, a, expr) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
             @ [Printf.sprintf node !uid "selection";
                Printf.sprintf edge_label !uid a_lbl (string_of_alg_expr expr)]
 
-    | AlgRenameTable (a, name) ->
+    | AlgRenameTable (_, a, name) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 

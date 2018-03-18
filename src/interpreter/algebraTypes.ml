@@ -1,17 +1,22 @@
 type header = string * string
 
+let uid = ref 0
+let new_uid () = incr uid; !uid
+
+type uid = int
+
 type expression =
   | AlgBinOp of Ast.binop * expression * expression
   | AlgAtom of Ast.atom
 
 type algebra =
-  | AlgUnion of algebra * algebra
-  | AlgMinus of algebra * algebra
-  | AlgProjection of algebra * header array
-  | AlgInput of string (* for input nodes *)
-  | AlgProduct of algebra * algebra
-  | AlgSelect of algebra * expression
-  | AlgRenameTable of algebra * string
+  | AlgUnion of uid * algebra * algebra
+  | AlgMinus of uid * algebra * algebra
+  | AlgProjection of uid * algebra * header list
+  | AlgInput of uid * string (* for input nodes *)
+  | AlgProduct of uid * algebra * algebra
+  | AlgSelect of uid * algebra * expression
+  | AlgRenameTable of uid * algebra * string
 
 type feed_result = string array
 
