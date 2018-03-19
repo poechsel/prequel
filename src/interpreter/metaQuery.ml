@@ -13,7 +13,9 @@ let rec feed_from_query (query : algebra) : feed_interface =
   | AlgProjection(a, headers) ->
     new Projection.projection (feed_from_query a) headers
   | AlgSelect(a, filter) ->
-    new Select.select (feed_from_query a) filter
+    let sub = feed_from_query a in
+    let filter = Arithmetics.compile_filter sub#headers filter in
+    new Select.select sub filter
   | AlgProduct(a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRenameTable(a, b) ->
