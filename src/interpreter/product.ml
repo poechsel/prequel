@@ -19,7 +19,7 @@ class product (a : AlgebraTypes.feed_interface) ( b : AlgebraTypes.feed_interfac
       in 
       match (current, right_x) with
       | Some x, Some y ->
-        Some (x@y)
+        Some (Array.append x y)
       | _ -> None
 
     method reset =
@@ -27,5 +27,5 @@ class product (a : AlgebraTypes.feed_interface) ( b : AlgebraTypes.feed_interfac
       right#reset
 
     method headers =
-      left#headers @ right#headers
+      Array.append left#headers right#headers
   end 

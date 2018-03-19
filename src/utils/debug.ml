@@ -81,7 +81,7 @@ let graphviz_instrs_of_algebra alg =
       !uid, a_str 
             @ [Printf.sprintf node !uid "projection";
                Printf.sprintf edge_label !uid a_lbl 
-                 (String.concat "; " (List.map string_of_header headers))]
+                 (Utils.array_concat "; " (Array.map string_of_header headers))]
 
 
     | AlgSelect(a, expr) ->

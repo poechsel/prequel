@@ -1,3 +1,5 @@
+let array_concat s a = 
+  String.concat s (Array.to_list a)
 
 let merge_list fct l = 
   if List.length l = 1 then 

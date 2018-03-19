@@ -11,5 +11,5 @@ class rename_table (sub : AlgebraTypes.feed_interface) ( name : string ) =
       sub#reset
 
     method headers =
-      List.map (fun i -> (name, snd i)) sub#headers
+      Array.map (fun i -> (name, snd i)) sub#headers
   end 
