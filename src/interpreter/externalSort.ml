@@ -1,3 +1,16 @@
+(*
+Quick overview on optimisation for speed:
+   - we are using arrays when we can instead of lists. After testing, it is
+     far more efficient, especially when sorting
+   - keys are computed only once, and are storred inside temporary files. Even 
+     though this yield larger files, recomputing them decreases performances by 10%
+   - Marshalling is the quickest way we found to write temporary files. Converting to 
+     csv is less flexible, and doing its own serialisation is less performant.
+     On top of that, Marshalling is independant from the data we want to write !
+*)
+
+
+
 let tail_map f l = 
   let rec aux l acc =
     match l with
@@ -11,9 +24,9 @@ let evaluate_row headers keys row =
   Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys
 
 
-(*
+(* (* SKELETON of hand-made serialization *)
 let serialize channel (comp, line) = 
-  output_binary_int channel @@ List.length comp;
+  output_byte channel @@ List.length comp;
   let rec aux l = 
     match l with
     | [] -> ()
@@ -30,7 +43,7 @@ let serialize channel (comp, line) =
       end 
     | _ -> failwith ""
   in aux comp;
-  output_binary_int channel @@ List.length line;
+  output_byte channel @@ List.length line;
   let rec aux l =
     match l with
     | [] -> ()
@@ -39,52 +52,43 @@ let serialize channel (comp, line) =
     output_string channel x; aux tl
   in aux line
 
-(*)
-  for i = 0 to Array.length line - 1 do
-    output_binary_int channel @@ String.length line.(i);
-    output_string channel line.(i)
-  done; ()
-*)
-
 let deserialize channel = 
-  let length = input_binary_int channel in
+  let length = input_byte channel in
   let rec aux i = 
     if i = length then
       []
     else begin
       match input_byte channel with
       | 0 ->
-        Ast.Number (input_binary_int channel) :: aux (i+1)
+        let x = input_binary_int channel in
+        Ast.Number (x) :: aux (i+1)
       | 1 ->
         let l = input_binary_int channel in
         Ast.String (really_input_string channel l) :: aux (i+1)
       | _ -> failwith ""
     end
   in let comp = aux 0 in
-  let length = input_binary_int channel in
+  let length = input_byte channel in
+  let _ = if length != 2 then print_string "erreur\n" in
   let rec aux i = 
     if i = length then
       []
     else
       let l = input_binary_int channel in
-      really_input_string channel l :: aux (i+1)
-in comp, aux length
-  (*
-  let line = Array.make length "" in
-  let _ = for i = 0 to length - 1 do
-      let l = input_binary_int channel in
-      line.(i) <- really_input_string channel l
-    done
-  in comp, line
+      let s = begin try really_input_string channel l with _ -> Printf.printf "-> %d\n" l; "" end in
+      s :: aux (i+1)
+in comp, aux 0
 *)
-   *)
+
+let serialize a b = Marshal.to_channel a b [Marshal.No_sharing]
+let deserialize = Marshal.from_channel
 
 
 let to_file headers file offset buffer=
   let channel = open_out_bin file in
   let _ = 
     for i = offset to Array.length buffer - 1 do
-      Marshal.to_channel channel buffer.(i) [Marshal.No_sharing]
+        serialize channel buffer.(i)
     done in
   close_out channel
 
@@ -135,10 +139,10 @@ let rec kway_merge ?(write_to_csv=false) channel headers keys t =
     let el, min_csv = PriorityQueue.pop t in
     let () = 
       if write_to_csv then (output_string channel (String.concat ", " @@ snd el); output_string channel "\n") 
-      else Marshal.to_channel channel el [Marshal.No_sharing]
+      else serialize channel el
     in
     begin try
-        let next = Marshal.from_channel min_csv in
+        let next = deserialize min_csv in
         let append = (next, min_csv)
         in PriorityQueue.insert t append
       with _ -> ()
@@ -164,10 +168,12 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
   in 
   let subgroups = split_groups sub_groups_size csvs in
   let all_files = List.map (fun group ->
-      let t = PriorityQueue.make (List.length group) (fun a b -> Pervasives.compare (fst a) (fst b)) in
+      let t = PriorityQueue.make (List.length group) 
+          (fun a b -> Pervasives.compare (fst a) (fst b)) 
+      in
       let _ = List.iter (fun file ->
           let channel = open_in_bin file in
-          let el = Marshal.from_channel channel in
+          let el = deserialize channel in
           (el, channel)
           |> PriorityQueue.insert t 
         ) group in
