@@ -1,3 +1,15 @@
+let array_concat s a = 
+  String.concat s (Array.to_list a)
+
+let array_find el ar =
+  let rec aux i = 
+    if i = Array.length ar then
+      failwith "element not found"
+    else
+    if ar.(i) = el then
+      i
+    else aux (i+1)
+  in aux 0
 
 let merge_list fct l = 
   if List.length l = 1 then 

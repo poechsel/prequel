@@ -56,7 +56,7 @@ let compile query =
       let layer = compile_where_clause layer cond in
       let layer = match attributes with
         | [] -> layer
-        | _ when project -> AlgProjection(layer, List.map fst attributes)
+        | _ when project -> AlgProjection(layer, List.map fst attributes |> Array.of_list)
         | _ -> layer
       in layer
 
