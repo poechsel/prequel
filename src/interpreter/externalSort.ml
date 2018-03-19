@@ -4,9 +4,16 @@ Quick overview on optimisation for speed:
      far more efficient, especially when sorting
    - keys are computed only once, and are storred inside temporary files. Even 
      though this yield larger files, recomputing them decreases performances by 10%
+     -> This is no more true since we use arrays instead of list to represent
+        rows. If the expressions on which the keys are computed are simple enough, 
+        not caching the keys on the hdd might yield the same performances (if not 
+        slightly better performances)
    - Marshalling is the quickest way we found to write temporary files. Converting to 
      csv is less flexible, and doing its own serialisation is less performant.
      On top of that, Marshalling is independant from the data we want to write !
+   - transitionning to using Arrays to represent rows lead to a tremendous decrease
+     in ram usage. Probably because arrays are mutable and not lists.
+     ~ the mistery of the gc
 *)
 
 
@@ -19,66 +26,8 @@ let tail_map f l =
   in aux l []
 
 
-let evaluate_row headers keys row = 
-  let tbl = Arithmetics.Env.make headers row in
-  Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys
-
-
-(* (* SKELETON of hand-made serialization *)
-let serialize channel (comp, line) = 
-  output_byte channel @@ List.length comp;
-  let rec aux l = 
-    match l with
-    | [] -> ()
-    | Ast.Number x :: tl -> begin
-        output_byte channel 0;
-        output_binary_int channel x;
-        aux tl
-      end 
-    | Ast.String x :: tl -> begin
-        output_byte channel 1;
-        output_binary_int channel (String.length x);
-        output_string channel x;
-        aux tl
-      end 
-    | _ -> failwith ""
-  in aux comp;
-  output_byte channel @@ List.length line;
-  let rec aux l =
-    match l with
-    | [] -> ()
-    | x::tl ->
-    output_binary_int channel @@ String.length x;
-    output_string channel x; aux tl
-  in aux line
-
-let deserialize channel = 
-  let length = input_byte channel in
-  let rec aux i = 
-    if i = length then
-      []
-    else begin
-      match input_byte channel with
-      | 0 ->
-        let x = input_binary_int channel in
-        Ast.Number (x) :: aux (i+1)
-      | 1 ->
-        let l = input_binary_int channel in
-        Ast.String (really_input_string channel l) :: aux (i+1)
-      | _ -> failwith ""
-    end
-  in let comp = aux 0 in
-  let length = input_byte channel in
-  let _ = if length != 2 then print_string "erreur\n" in
-  let rec aux i = 
-    if i = length then
-      []
-    else
-      let l = input_binary_int channel in
-      let s = begin try really_input_string channel l with _ -> Printf.printf "-> %d\n" l; "" end in
-      s :: aux (i+1)
-in comp, aux 0
-*)
+let evaluate_row keys row = 
+  Faster_map.faster_map (fun x -> x row) keys
 
 let serialize a b = Marshal.to_channel a b [Marshal.No_sharing]
 let deserialize = Marshal.from_channel
@@ -88,7 +37,7 @@ let to_file headers file offset buffer=
   let channel = open_out_bin file in
   let _ = 
     for i = offset to Array.length buffer - 1 do
-        serialize channel buffer.(i)
+        serialize channel (snd buffer.(i))
     done in
   close_out channel
 
@@ -113,14 +62,14 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
              Because ocaml's sort can't sort between two indexes, we fill the
              buffer with values that are small: they will be placed on the 
              start of the buffer *)
-          buffer.(i) <- ([], [])
+          buffer.(i) <- ([], [||])
         done in
       let _ = sort headers keys in
       let file_name = TempManager.new_temp () in
       let _ = to_file headers file_name (size_chunk - current_size) buffer in
       file_name::filelist
     | Some x ->
-      let () = buffer.(current_size) <- evaluate_row headers keys x, x in
+      let () = buffer.(current_size) <- evaluate_row keys x, x in
       if current_size + 1 = size_chunk then
         (* if the current chunk is larger than the authorized size, create a new file *)
         let _ = sort headers keys in
@@ -138,12 +87,18 @@ let rec kway_merge ?(write_to_csv=false) channel headers keys t =
   while PriorityQueue.get_size t > 0 do
     let el, min_csv = PriorityQueue.pop t in
     let () = 
-      if write_to_csv then (output_string channel (String.concat ", " @@ snd el); output_string channel "\n") 
-      else serialize channel el
+      if write_to_csv then (
+        let a = snd el in
+        for i = 0 to Array.length a - 1 do
+          if i > 0 then output_string channel ",";
+          output_string channel a.(i)
+        done;
+        output_string channel "\n") 
+      else serialize channel (snd el)
     in
     begin try
         let next = deserialize min_csv in
-        let append = (next, min_csv)
+        let append = ((evaluate_row keys next, next), min_csv)
         in PriorityQueue.insert t append
       with _ -> ()
     end
@@ -174,7 +129,7 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
       let _ = List.iter (fun file ->
           let channel = open_in_bin file in
           let el = deserialize channel in
-          (el, channel)
+          ((evaluate_row keys el, el), channel)
           |> PriorityQueue.insert t 
         ) group in
       let write_to_csv = List.length subgroups = 1 in
@@ -182,7 +137,7 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
       let output = 
         if write_to_csv then begin
           let output = open_out file in
-          output_string output (String.concat "," (List.map snd headers));
+          output_string output (Utils.array_concat "," (Array.map snd headers));
           output_string output "\n";
           output;
         end else 
@@ -211,6 +166,9 @@ class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression li
 
     val mutable initialized = false
     val mutable cache = []
+    val keys = 
+      let h = sub#headers in 
+      List.map (Arithmetics.compile_value h) keys
     val mutable sub = sub
     
     method next = 

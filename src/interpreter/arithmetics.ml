@@ -122,7 +122,13 @@ let rec compile_value header expr =
       match y with
       | Attribute y ->
         let i = Utils.array_find y header in
-        fun row -> String (row.(i))
+        fun row -> 
+          let t = row.(i) in
+          begin try
+              Number (int_of_string t)
+            with _ -> 
+              String t
+          end 
       | _ -> fun row -> y
     end
   | AlgBinOp(op, r, l) ->
