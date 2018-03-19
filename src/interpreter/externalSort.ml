@@ -10,6 +10,76 @@ let evaluate_row headers keys row =
   let tbl = Arithmetics.Env.make headers row in
   Faster_map.faster_map (fun x -> Arithmetics.execute_value x tbl) keys
 
+
+(*
+let serialize channel (comp, line) = 
+  output_binary_int channel @@ List.length comp;
+  let rec aux l = 
+    match l with
+    | [] -> ()
+    | Ast.Number x :: tl -> begin
+        output_byte channel 0;
+        output_binary_int channel x;
+        aux tl
+      end 
+    | Ast.String x :: tl -> begin
+        output_byte channel 1;
+        output_binary_int channel (String.length x);
+        output_string channel x;
+        aux tl
+      end 
+    | _ -> failwith ""
+  in aux comp;
+  output_binary_int channel @@ List.length line;
+  let rec aux l =
+    match l with
+    | [] -> ()
+    | x::tl ->
+    output_binary_int channel @@ String.length x;
+    output_string channel x; aux tl
+  in aux line
+
+(*)
+  for i = 0 to Array.length line - 1 do
+    output_binary_int channel @@ String.length line.(i);
+    output_string channel line.(i)
+  done; ()
+*)
+
+let deserialize channel = 
+  let length = input_binary_int channel in
+  let rec aux i = 
+    if i = length then
+      []
+    else begin
+      match input_byte channel with
+      | 0 ->
+        Ast.Number (input_binary_int channel) :: aux (i+1)
+      | 1 ->
+        let l = input_binary_int channel in
+        Ast.String (really_input_string channel l) :: aux (i+1)
+      | _ -> failwith ""
+    end
+  in let comp = aux 0 in
+  let length = input_binary_int channel in
+  let rec aux i = 
+    if i = length then
+      []
+    else
+      let l = input_binary_int channel in
+      really_input_string channel l :: aux (i+1)
+in comp, aux length
+  (*
+  let line = Array.make length "" in
+  let _ = for i = 0 to length - 1 do
+      let l = input_binary_int channel in
+      line.(i) <- really_input_string channel l
+    done
+  in comp, line
+*)
+   *)
+
+
 let to_file headers file offset buffer=
   let channel = open_out_bin file in
   let _ = 
@@ -65,7 +135,7 @@ let rec kway_merge ?(write_to_csv=false) channel headers keys t =
     let el, min_csv = PriorityQueue.pop t in
     let () = 
       if write_to_csv then (output_string channel (String.concat ", " @@ snd el); output_string channel "\n") 
-      else Marshal.to_channel channel min_csv [Marshal.No_sharing]
+      else Marshal.to_channel channel el [Marshal.No_sharing]
     in
     begin try
         let next = Marshal.from_channel min_csv in
