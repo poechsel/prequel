@@ -37,65 +37,65 @@ let rec string_of_alg_expr expr =
 
 let graphviz_instrs_of_algebra alg =
   let uid = ref 0 in
-  let node = format_of_string "%d [label = \"%s\"]" in
+  let node = format_of_string "%d [label = \"%s (%d)\"]" in
   let edge = format_of_string "%d -> %d" in
   let edge_label = format_of_string "%d -> %d [label = \"%s\"]" in
   let rec conv_alg alg =
     match alg with
-    | AlgUnion(_, a, b) ->
+    | AlgUnion(u, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
       !uid, a_str 
             @ b_str 
-            @ [Printf.sprintf node !uid "union";
+            @ [Printf.sprintf node !uid "union" u;
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
-    | AlgMinus(_, a, b) ->
+    | AlgMinus(u, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
       !uid, a_str 
             @ b_str 
-            @ [Printf.sprintf node !uid "minus";
+            @ [Printf.sprintf node !uid "minus" u;
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 
-    | AlgProduct(_, a, b) ->
+    | AlgProduct(u, a, b) ->
       let a_lbl, a_str = conv_alg a in
       let b_lbl, b_str = conv_alg b in
       let _ = incr uid in
       !uid, a_str 
             @ b_str 
-            @ [Printf.sprintf node !uid "product";
+            @ [Printf.sprintf node !uid "product" u;
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 
-    | AlgInput(_, name) ->
+    | AlgInput(u, name) ->
       let _ = incr uid in
-      !uid, [Printf.sprintf node !uid name]
+      !uid, [Printf.sprintf node !uid name u]
 
-    | AlgProjection(_, a, headers) ->
+    | AlgProjection(u, a, headers) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
-            @ [Printf.sprintf node !uid "projection";
+            @ [Printf.sprintf node !uid "projection" u;
                Printf.sprintf edge_label !uid a_lbl 
                  (Utils.array_concat "; " (Array.map string_of_header headers))]
 
 
-    | AlgSelect(_, a, expr) ->
+    | AlgSelect(u, a, expr) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
-            @ [Printf.sprintf node !uid "selection";
+            @ [Printf.sprintf node !uid "selection" u;
                Printf.sprintf edge_label !uid a_lbl (string_of_alg_expr expr)]
 
-    | AlgRenameTable (_, a, name) ->
+    | AlgRenameTable (u, a, name) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
-            @ [Printf.sprintf node !uid "rename_table";
+            @ [Printf.sprintf node !uid "rename_table" u;
                Printf.sprintf edge_label !uid a_lbl name]
 
 
