@@ -45,7 +45,7 @@ let mode_of_line s =
 
 (** Compares two CSV files with a given test mode. *)
 let compare_csvs mode a b =
-  let printer = Utils.concat_list ~sep:", " in
+  let printer = String.concat ", " in
 
   (* Compare the two headers *)
   let ha = Csv.Rows.header a in
