@@ -1,3 +1,6 @@
+let get_headers name h = 
+  Array.map (fun i -> (name, snd i)) h
+
 class rename_table (sub : AlgebraTypes.feed_interface) ( name : string ) =
   object(self)
     inherit AlgebraTypes.feed_interface
@@ -11,5 +14,5 @@ class rename_table (sub : AlgebraTypes.feed_interface) ( name : string ) =
       sub#reset
 
     method headers =
-      Array.map (fun i -> (name, snd i)) sub#headers
+      get_headers name sub#headers
   end 

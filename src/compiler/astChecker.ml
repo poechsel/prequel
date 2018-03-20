@@ -64,14 +64,13 @@ let check_coherence query =
         let a, b = check_query headers x in
         a, AstSubQuery b
       | AstTable name ->
-        let oc = 
+        let headers = 
           try
-            open_in name 
+            InputCachedFile.get_headers name
+            |> Array.to_list
           with e ->
             raise (Errors.BadQuery (Printf.sprintf "error: file \"%s\" doesn't exists" name)) 
         in
-        let csv = Csv.of_channel ?has_header:(Some true) oc in
-        let headers = List.map (fun i -> name, i) @@ Csv.Rows.header csv in
         headers, AstTable name
       | AstCompiled x ->
         [], AstCompiled x

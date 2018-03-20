@@ -1,3 +1,5 @@
+let get_headers h = h
+
 class select (sub : AlgebraTypes.feed_interface) (selector : AlgebraTypes.feed_result -> bool) =
   object (self)
     inherit AlgebraTypes.feed_interface
@@ -18,6 +20,6 @@ class select (sub : AlgebraTypes.feed_interface) (selector : AlgebraTypes.feed_r
       sub#reset
 
     method headers = 
-      sub#headers
+      get_headers sub#headers
         
   end 

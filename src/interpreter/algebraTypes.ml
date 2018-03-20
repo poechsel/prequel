@@ -12,7 +12,7 @@ type expression =
 type algebra =
   | AlgUnion of uid * algebra * algebra
   | AlgMinus of uid * algebra * algebra
-  | AlgProjection of uid * algebra * header list
+  | AlgProjection of uid * algebra * header array
   | AlgInput of uid * string (* for input nodes *)
   | AlgProduct of uid * algebra * algebra
   | AlgSelect of uid * algebra * expression

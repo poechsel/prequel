@@ -1,3 +1,5 @@
+let get_headers h_a h_b = h_a
+
 (* this one is not totally inline, it would require an external sort *)
 class minus (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_interface) =
   object(self)
@@ -25,12 +27,12 @@ class minus (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_inte
               Some x
 
     method reset = 
+      let _ = initialized <- false in
+      let _ = Hashtbl.reset hashtbl in 
       let _ = left#reset in 
       right#reset
 
     method headers =
-      let _ = initialized <- false in
-      let _ = Hashtbl.reset hashtbl in 
-      left#headers
+      get_headers left#headers right#headers
   end
       
