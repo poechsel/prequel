@@ -31,6 +31,7 @@ type mode =
   | Normal  (* Each expected line must appear at least one. *)
   | Ordered (* Same as Normal, but in the right order. *)
   | Exact   (* Output must be identical to the expected output. *)
+  | Todo    (* The test should be ignored. *)
 
 
 let mode_of_line s =
@@ -38,6 +39,7 @@ let mode_of_line s =
     | "[normal]"  -> Normal
     | "[ordered]" -> Ordered
     | "[exact]"   -> Exact
+    | "[todo]"    -> Todo
     | _ -> failwith "Unknown test mode."
 
 
@@ -59,6 +61,7 @@ let compare_csvs mode a b =
   let ra = Csv.Rows.input_all a |> Array.of_list in
   let rb = Csv.Rows.input_all b |> Array.of_list in
   match mode with
+    | Todo   -> todo "The test is not finished yet."
     | Normal ->
         (* In normal mode, we use a hashtable to count the
            number of occurences of each row in the result. *)
