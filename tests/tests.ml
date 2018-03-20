@@ -53,21 +53,32 @@ let make_case file =
     else
       parse_line (input_line file) (prev ^ " " ^ line) in
 
-  fun _ ->
+  fun context ->
     let (query, mode, csv) =
       parse_line (input_line file) "" in
 
+    let hash = Digest.string query |> Digest.to_hex in
+    let temp_file = Filename.temp_file "minisql" hash in
+
     let params = {
       repl = ref false;
-      out = ref "";
+      out = ref temp_file;
       request = ref "";
       graphviz = ref ""} in
 
     let buffer = Lexing.from_string query in
-    let ast = Common.parse_line ~with_endline:false buffer in
+    let ast = Common.parse_line ~with_endline:true buffer in
     Common.action params ast;
 
-    let csv' = Csv.of_channel file |> Csv.input_all in
+    let csv' =
+      open_in temp_file
+      |> Csv.of_channel
+      |> Csv.input_all in
+
+    (* print_endline query; *)
+    (* Csv.print_readable csv; *)
+    (* Csv.print_readable csv'; *)
+    (* print_newline (); *)
     assert_equal 0 @@ Csv.compare csv csv'
 
 

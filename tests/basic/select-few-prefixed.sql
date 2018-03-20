@@ -1,5 +1,6 @@
-SELECT idd, nom FROM "../sources/departements.csv";
-===================================================
+SELECT depts.idd, depts.nom FROM "tests/sources/departements.csv" AS depts;
+
+[normal]
 idd,nom
 1,Direction
 2,Recherche

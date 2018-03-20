@@ -47,7 +47,7 @@ let action params ast =
   let feed = MetaQuery.feed_from_query alg in
   let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
   let _ = feed#save out_channel in
-  ()
+  flush out_channel
 
 
 let repl params = 
