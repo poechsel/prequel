@@ -15,19 +15,8 @@ Quick overview on optimisation for speed:
      in ram usage. Probably because arrays are mutable and not lists.
      ~ the mistery of the gc
 *)
-
-
-
-let tail_map f l = 
-  let rec aux l acc =
-    match l with
-    | [] -> List.rev acc
-    | x::tl -> aux tl (f x :: acc)
-  in aux l []
-
-
 let evaluate_row keys row = 
-  Faster_map.faster_map (fun x -> x row) keys
+  Array.map (fun x -> x row) keys
 
 let serialize a b = Marshal.to_channel a b [Marshal.No_sharing]
 let deserialize = Marshal.from_channel
@@ -62,7 +51,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
              Because ocaml's sort can't sort between two indexes, we fill the
              buffer with values that are small: they will be placed on the 
              start of the buffer *)
-          buffer.(i) <- ([], [||])
+          buffer.(i) <- ([||], [||])
         done in
       let _ = sort headers keys in
       let file_name = TempManager.new_temp () in
@@ -160,7 +149,7 @@ let external_sort feed headers keys =
 
 
 
-class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression list) =
+class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression array) =
   object(self)
     inherit AlgebraTypes.feed_interface
 
@@ -168,7 +157,7 @@ class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression li
     val mutable cache = []
     val keys = 
       let h = sub#headers in 
-      List.map (Arithmetics.compile_value h) keys
+      Array.map (Arithmetics.compile_value h) keys
     val mutable sub = sub
     
     method next = 
