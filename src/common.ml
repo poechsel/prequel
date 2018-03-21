@@ -24,7 +24,7 @@ let parse_input channel =
 
 (** run_query : Ast.t -> unit
     Attempts to execute a query using the interpreter. *)
-let run_query ?debug:(debug=false) ?output:(output=stdout) query =
+let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout) query =
   let algebra =
     query
     |> AstChecker.check_coherence
@@ -47,5 +47,9 @@ let run_query ?debug:(debug=false) ?output:(output=stdout) query =
   end;
 
   let feed = MetaQuery.feed_from_query algebra in
-  feed#save output;
-  flush output
+  if pretty then
+    feed#print
+  else begin
+    feed#save output;
+    flush output
+  end

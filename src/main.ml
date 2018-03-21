@@ -6,7 +6,9 @@ open Command
 
 
 (** REPL state variables. *)
+let wd = Sys.getcwd ()
 let debug = ref false
+let pretty = ref false
 
 
 (** print_header : unit -> unit
@@ -25,8 +27,7 @@ let print_header () =
   |> print_endline;
 
   "MiniSQL version 1.1.                 \n" ^
-  "Enter .help for usage tips.          \n" ^
-  "Enter .debug to turn on debug output.\n"
+  "Enter .help for usage tips.          \n"
   |> faint
   |> print_endline
 
@@ -42,24 +43,26 @@ let print_error e =
 (** run_command : Command.t -> unit
     Attemps to run a top-level command. *)
 let run_command = function
-  | Command "help"  ->
-      let message =
-        "          .help - Displays this message.\n" ^
-        "           .pwd - Prints the current working directory.\n" ^
-        "     .cd {path} - Changes the current working directory.\n" ^
-        ".debug {on/off} - Enables or disables debug output.\n" in
-
-      print_endline <| faint message
+  | Command "help" ->
+      print_string <|
+        (bold "           .help") ^ (faint " Displays this message.\n") ^
+        (bold "            .pwd") ^ (faint " Prints the current working directory.\n") ^
+        (bold "      .cd {path}") ^ (faint " Changes the current working directory.\n") ^
+        (bold " .debug {on/off}") ^ (faint " Enables or disables debug output.\n") ^
+        (bold ".pretty {on/off}") ^ (faint " Enables or disables pretty printing.\n")
 
   | Command "debug" ->
       debug := true;
-      print_endline <| faint "Debug output enabled.";
-      print_newline ()
+      print_endline <| faint "Debug output enabled."
 
-  | Command _ -> print_error "Unknown command."
-  | Query q ->
-      run_query ~debug:!debug q;
-      print_newline ()
+  | Command "pretty" ->
+      pretty := true;
+      print_endline <| faint "Pretty printing enabled."
+
+  | Command "pwd" -> print_endline <| Sys.getcwd ()
+  | Command "cd"  -> () (* TODO *)
+  | Command _     -> print_error "Unknown command."
+  | Query q       -> run_query ~debug:!debug ~pretty:!pretty q
 
 
 (** start_repl : unit -> unit
@@ -68,16 +71,22 @@ let start_repl () =
   print_header ();
 
   while true do
+    if Sys.getcwd () <> wd then
+      Printf.printf "(%s)" "foo";
+
     print_string <| bold "> ";
     flush stdout;
 
-    try
+    begin try
       parse_input stdin
       |> run_command
     with
       | SyntaxError (s)         -> print_error <| "Syntax error: " ^ s
       | SemanticError (s)       -> print_error <| "Query semantic error: " ^ s
       | InterpretationError (s) -> print_error <| "Interpretation error: " ^ s
+    end;
+
+    print_newline ()
   done
 
 

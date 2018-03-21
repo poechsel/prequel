@@ -25,3 +25,36 @@ let option_map fct x =
   match x with
   | None -> None
   | Some x -> Some (fct x)
+
+
+(** print_table : string array list -> unit
+    Pretty-prints a given table of strings. *)
+let print_table m =
+  let width = 20 in
+  let cells = Array.length <| List.hd m in
+  let delim = String.make ((width + 3) * cells + 1) '-' in
+
+  let print_cell cell =
+    let content =
+      if String.length cell > width then
+        (String.sub cell 0 (width - 3)) ^ "..."
+      else
+        cell in
+
+    Printf.printf "| %-*s " width content in
+
+  let print_header line =
+    print_endline delim;
+    Array.iter print_cell line;
+    Printf.printf "|";
+    print_newline ();
+    print_endline delim in
+
+  let print_line line =
+    Array.iter print_cell line;
+    Printf.printf "|";
+    print_newline () in
+
+  List.hd m |> print_header;
+  List.tl m |> List.iter print_line;
+  print_endline delim
