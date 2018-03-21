@@ -75,7 +75,7 @@ let start_repl () =
       parse_input stdin
       |> run_command
     with
-      | ParsingError (s)        -> print_error <| "Syntax error: " ^ s
+      | SyntaxError (s)         -> print_error <| "Syntax error: " ^ s
       | SemanticError (s)       -> print_error <| "Query semantic error: " ^ s
       | InterpretationError (s) -> print_error <| "Interpretation error: " ^ s
   done

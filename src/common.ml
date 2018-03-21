@@ -2,6 +2,7 @@ open Ast
 open Lexer
 open Parser
 open Errors
+open Utils
 open MetaQuery
 
 
@@ -16,8 +17,9 @@ let parse_input channel =
     Parsing.clear_parser ();
     command
   with _ ->
-    let tok = Lexing.lexeme buffer in
-    raise (send_parsing_error (Lexing.lexeme_start_p buffer) tok) (* TODO *)
+    raise <| make_syntax_error
+      (Lexing.lexeme_start_p buffer)
+      (Lexing.lexeme buffer)
 
 
 (** run_query : Ast.t -> unit
