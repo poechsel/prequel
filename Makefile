@@ -1,5 +1,5 @@
 all:
-	ocamlbuild -yaccflag -v -package str -package csv -lib unix src/main.native; 
+	ocamlbuild -use-ocamlfind -yaccflag -v -package str -package csv -package ppx_deriving.std -lib unix src/main.native; 
 byte:
 	ocamlbuild -yaccflag -v -package csv src/main.byte
 test:

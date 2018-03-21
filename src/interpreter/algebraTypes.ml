@@ -1,13 +1,16 @@
 type header = string * string
+[@@deriving show]
 
 let uid = ref 0
 let new_uid () = incr uid; !uid
 
 type uid = int
+[@@deriving show]
 
 type expression =
   | AlgBinOp of Ast.binop * expression * expression
   | AlgAtom of Ast.atom
+[@@deriving show]
 
 type algebra =
   | AlgUnion of uid * algebra * algebra
@@ -17,6 +20,7 @@ type algebra =
   | AlgProduct of uid * algebra * algebra
   | AlgSelect of uid * algebra * expression
   | AlgRenameTable of uid * algebra * string
+[@@deriving show]
 
 type feed_result = string array
 

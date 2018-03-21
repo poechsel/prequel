@@ -14,25 +14,23 @@ let get_uid_from_alg a =
 
 
 let rec get_headers ?(f=(fun _ _ -> ())) query =
-  let aux query = 
-    let get_headers = get_headers ~f:f in
-    match query with
+  let res = match query with
     | AlgInput(_, str) ->
       InputCachedFile.get_headers str
     | AlgUnion(_, a, b) ->
-      Union.get_headers (get_headers a) (get_headers b)
+      Union.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
     | AlgMinus(_, a, b) ->
-      Minus.get_headers (get_headers a) (get_headers b)
+      Minus.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
     | AlgProjection(_, a, headers) ->
+      let _ = get_headers ~f:f a in
       headers
     | AlgSelect(_, a, filter) ->
-      Select.get_headers (get_headers a)
+      Select.get_headers (get_headers ~f:f a)
     | AlgProduct(_, a, b) ->
-      Product.get_headers (get_headers a) (get_headers b)
+      Product.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
     | AlgRenameTable(_, a, b) ->
-      Rename.get_headers b (get_headers a)
+      Rename.get_headers b (get_headers ~f:f a)
   in 
-  let res = aux query in
   let _ = f (get_uid_from_alg query) res in
   res
 

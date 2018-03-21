@@ -34,9 +34,10 @@ module SetAttributes = Set.Make (struct
   end )
 
 let push_down_select query = 
+  let tbl = Hashtbl.create 10 in
+  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) query in
   let get_headers query =
-    (*TODO optimize, with a hashtbl for exemple*)
-    MetaQuery.get_headers query
+    Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
     |> Array.to_list
     |> SetAttributes.of_list 
   in 
