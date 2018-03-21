@@ -27,6 +27,20 @@ let option_map fct x =
   | Some x -> Some (fct x)
 
 
+(** length_utf8 : string -> int
+    Returns the length of an UTF8-encoded string. *)
+let length_utf8 s =
+  let rec length_aux s c i =
+  if i >= String.length s then c else
+    let n = Char.code (String.unsafe_get s i) in
+    let k =
+      if n < 0x80 then 1 else
+      if n < 0xe0 then 2 else
+      if n < 0xf0 then 3 else 4 in
+    length_aux s (c + 1) (i + k) in
+  length_aux s 0 0
+
+
 (** print_table : string array list -> unit
     Pretty-prints a given table of strings. *)
 let print_table m =
@@ -41,7 +55,8 @@ let print_table m =
       else
         cell in
 
-    Printf.printf "| %-*s " width content in
+    let pad = String.make (width - (length_utf8 content)) ' ' in
+    Printf.printf "| %s%s " content pad in
 
   let print_header line =
     print_endline delim;
