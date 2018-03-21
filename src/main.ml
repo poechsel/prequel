@@ -93,7 +93,7 @@ let () =
   let path = ref "" in
   let usage =
     "MiniSQL version 1.1.\n" ^
-    "Usage: ./main.native [path]\n" ^
+    "Usage: ./minisql [path]\n" ^
     "When path is not specified, runs in REPL mode." in
 
   Arg.parse [] ((:=) path) usage;
