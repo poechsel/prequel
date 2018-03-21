@@ -6,6 +6,28 @@ let comp_atom a b =
   if a < b then -1 else
     1
 
+
+module Env = struct
+  type t = (string * string) list
+  let rec find env x = 
+    let rec find env' x = 
+      let _ = if env' = [] then print_string "zeitoetio\n" in
+    match env' with
+    | [] -> let _ = List.iter (fun (x, y) -> Printf.printf "%s.%s\n" (fst x) (snd x)) env in failwith (snd x)
+    | (a, b)::tl when x=a -> b
+    | _::tl -> find tl x
+    in find env x
+
+
+  let rec make headers line = 
+    match headers, line with
+    | [], _ | _, [] -> []
+    | h::tl, h'::tl' -> (h, h') :: make tl tl'
+
+
+
+end 
+
 let comp a b =
   match (a, b) with
   | (Number a), (Number b) -> 
@@ -23,7 +45,12 @@ let rec execute_value expr env =
   | AlgAtom y -> begin
       match y with
       | Attribute y ->
-        String (Hashtbl.find env y)
+        let t = Env.find env y in
+        begin try
+          Number (int_of_string t)
+        with _ -> 
+          String t
+      end 
       | _ -> y
     end
   | AlgBinOp(op, r, l) ->
@@ -95,7 +122,13 @@ let rec compile_value header expr =
       match y with
       | Attribute y ->
         let i = Utils.array_find y header in
-        fun row -> String (row.(i))
+        fun row -> 
+          let t = row.(i) in
+          begin try
+              Number (int_of_string t)
+            with _ -> 
+              String t
+          end 
       | _ -> fun row -> y
     end
   | AlgBinOp(op, r, l) ->

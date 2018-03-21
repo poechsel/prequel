@@ -23,3 +23,5 @@ let _ =
   let lexbuf = Lexing.from_channel input_channel in
   let ast = parse_line ~with_endline:false lexbuf in
   action params ast
+
+let _ = TempManager.remove_all_temp ()

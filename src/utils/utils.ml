@@ -11,6 +11,11 @@ let array_find el ar =
     else aux (i+1)
   in aux 0
 
+let temp_file_uid = ref 0
+let get_next_temp_file () = 
+  let _ = incr temp_file_uid in
+  Printf.sprintf "tmp/tmp_%d" !temp_file_uid
+
 let merge_list fct l = 
   if List.length l = 1 then 
     List.hd l
