@@ -2,76 +2,48 @@ open Ast
 open Lexer
 open Parser
 open Errors
-
 open MetaQuery
 
-type params = {repl: bool ref; out: string ref; request: string ref; graphviz: string ref}
 
-let parse_line ?(with_endline=true) lexbuf =
-  (* parse a line from a corresponding buffer of tokens
-     @Param lexbuf: a buffer of tokens
-     *)
+(** parse_input : in_channel -> Command.t
+    Attemps to parse a command from the standard input. *)
+let parse_input channel =
+  let buffer = Lexing.from_channel channel in
+
   try
-    if with_endline = true then
-      Parser.main_with_endline Lexer.token lexbuf
-    else 
-      Parser.main_without_endline Lexer.token lexbuf
-  with exn ->
-    begin
-      let tok = Lexing.lexeme lexbuf in
-      raise (send_parsing_error (Lexing.lexeme_start_p lexbuf) tok)
-    end
-
-let clean_ast ast = 
-  let ast = AstChecker.check_coherence ast in
-  let ast = AstChecker.rename_tables ast in
-  let ast_disj = AstTransformers.disjunction ast in
-  ast_disj
-
-let compile_and_optimize ast =
-  let alg = Compiler.compile ast in
-  alg
+    let command = Parser.main Lexer.token buffer in
+    Lexing.flush_input buffer;
+    Parsing.clear_parser ();
+    command
+  with _ ->
+    let tok = Lexing.lexeme buffer in
+    raise (send_parsing_error (Lexing.lexeme_start_p buffer) tok) (* TODO *)
 
 
-let action params ast = 
-  (* the main body defining the different operations made to execute a sql query
-     @Param ast: a parsed sql query
-    *)
-  let ast = clean_ast ast in
-  let alg = compile_and_optimize ast in
-  let _ = if !(params.graphviz) <> "" then 
-      let channel = open_out !(params.graphviz) in 
-      let _ = Debug.graphviz_of_algebra channel alg in 
-      close_out channel 
-  in
-  let feed = MetaQuery.feed_from_query alg in
-  let out_channel = if !(params.out) = "" then stdout else open_out !(params.out) in
-  let _ = feed#save out_channel in
-  flush out_channel
+(** run_query : Ast.t -> unit
+    Attempts to execute a query using the interpreter. *)
+let run_query ?debug:(debug=false) ?output:(output=stdout) query =
+  let algebra =
+    query
+    |> AstChecker.check_coherence
+    |> AstChecker.rename_tables
+    |> AstTransformers.disjunction
+    |> Compiler.compile in
 
+  (* In debug mode, display a graph of the algebra term. *)
+  if debug then begin
+    let (name, chan) = Filename.open_temp_file "minisql" "graph" in
+    Debug.graphviz_of_algebra chan algebra;
+    close_out chan;
 
-let repl params = 
-  (* Repl interfact *)
-  let lexbuf = Lexing.from_channel stdin in
-  let rec aux () = 
-    let _ = print_string ">> "; flush stdout in 
-    let _ = try
-        let ast = parse_line lexbuf in
-        action params ast
-      with 
-      | ParsingError x ->
-        let _ = Lexing.flush_input lexbuf in 
-        let _ = Parsing.clear_parser () in 
-        let _ = print_endline x in 
-        ()
-      | BadQuery x ->
-        let _ = print_endline x in
-        ()
-      | InterpretationError x ->
-        let _ = print_endline x in
-        ()
-    in 
-    aux ()
-  in 
-  aux ();;
+    let name' = Filename.temp_file "minisql" "pdf" in
+    Printf.sprintf
+      "dot -Tpdf %s -o %s && xdg-open %s"
+      name name' name'
+    |> Sys.command
+    |> ignore
+  end;
 
+  let feed = MetaQuery.feed_from_query algebra in
+  feed#save output;
+  flush output

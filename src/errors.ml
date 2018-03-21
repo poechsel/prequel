@@ -31,7 +31,7 @@ end
 (* creating all of our errors *)
 exception InterpretationError of string
 exception ParsingError of string
-exception BadQuery of string
+exception SemanticError of string
 
 (* error of parsing *)
 let send_parsing_error infos token = 

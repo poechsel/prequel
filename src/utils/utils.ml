@@ -1,3 +1,5 @@
+let (<|) = (@@)
+
 let array_concat s a = 
   String.concat s (Array.to_list a)
 

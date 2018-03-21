@@ -1,5 +1,6 @@
 %{
-open Ast
+    open Command
+    open Ast
 %}
 
 %token <string> ID
@@ -9,20 +10,18 @@ open Ast
 %token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
-%start main_with_endline
-%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main_with_endline
-%start main_without_endline
-%type<(AlgebraTypes.algebra Ast.cond, AlgebraTypes.algebra) Ast.query> main_without_endline
+%start main
+%type<Command.t> main
 %%
 
-main_with_endline:
-    | query ENDLINE
-        { $1 }
-main_without_endline:
-    | query EOF
-        { $1 }
-    | query ENDLINE
-        { $1 }
+main:
+  /* Top-level commands */
+  | PUNKT ID  { Command ($2) }
+
+  /* SQL queries */
+  | query ENDLINE { Query ($1) }
+  | query EOF { Query ($1) }
+
 
 attributes_list:
     | attribute_renamed
