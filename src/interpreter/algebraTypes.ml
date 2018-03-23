@@ -19,7 +19,7 @@ type algebra =
   | AlgInput of uid * string (* for input nodes *)
   | AlgProduct of uid * algebra * algebra
   | AlgSelect of uid * algebra * expression
-  | AlgRenameTable of uid * algebra * string
+  | AlgRename of uid * algebra * (header * header) list
 [@@deriving show]
 
 type feed_result = string array

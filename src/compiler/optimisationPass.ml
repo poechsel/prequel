@@ -70,9 +70,9 @@ let push_down_select query =
         let i, a' = analyze_sub a in
         i, AlgProjection(u, a', headers)
 
-      | AlgRenameTable(u, a, name) ->
+      | AlgRename(u, a, name) ->
         let i, a' = analyze_sub a in
-        i, AlgRenameTable(u, a', name)
+        i, AlgRename(u, a', name)
 
       | AlgSelect(u, a, filter) ->
         let attrs = attributes_of_condition filter |> SetAttributes.of_list in
@@ -86,3 +86,46 @@ let push_down_select query =
          req
          to_insert
   in push_down [] query
+
+
+
+
+(* SELECT compressor *)
+
+let rec select_compressor alg =
+  match alg with 
+  | AlgSelect(_, AlgSelect(_, sub, e1), e2) ->
+    select_compressor (AlgSelect(AlgebraTypes.new_uid(), sub, AlgBinOp(Ast.And, e2, e1)))
+  | AlgUnion(u, a, b) ->
+    AlgUnion(u, (select_compressor a), (select_compressor b))
+  | AlgMinus(u, a, b) ->
+    AlgMinus(u, (select_compressor a), (select_compressor b))
+  | AlgProduct(u, a, b) ->
+    AlgProduct(u, (select_compressor a), (select_compressor b))
+  | AlgRename(u, a, b) ->
+    AlgRename(u, select_compressor a, b)
+  | AlgProjection(u, a, b) ->
+    AlgProjection(u, select_compressor a, b)
+  | AlgSelect(u, a, b) ->
+    AlgSelect(u, select_compressor a, b)
+  | AlgInput(u, str) ->
+    AlgInput(u, str)
+
+
+(* Projections optimizer *)
+      (*
+let insert_projections alg = 
+  let tbl = Hashtbl.create 10 in
+  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
+  let get_headers alg =
+    Hashtbl.find tbl (MetaQuery.get_uid_from_alg alg)
+    |> Array.to_list
+    |> SetAttributes.of_list 
+  in 
+  let rec aux alg =
+    let min_header_end = 
+      match alg with
+      | AlgProjection(u, a, b) ->
+
+  in aux alg
+         *)

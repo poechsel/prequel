@@ -8,7 +8,7 @@ let get_uid_from_alg a =
   | AlgProjection(u, _, _)
   | AlgProduct(u, _, _)
   | AlgSelect(u, _, _)
-  | AlgRenameTable(u, _, _) ->
+  | AlgRename(u, _, _) ->
     u
 
 
@@ -28,8 +28,10 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       Select.get_headers (get_headers ~f:f a)
     | AlgProduct(_, a, b) ->
       Product.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
-    | AlgRenameTable(_, a, b) ->
-      Rename.get_headers b (get_headers ~f:f a)
+    | AlgRename(_, a, b) ->
+      let h = get_headers ~f:f a in
+      let tbl = Rename.build_rename_map b h in
+      Rename.get_headers tbl h
   in 
   let _ = f (get_uid_from_alg query) res in
   res
@@ -55,6 +57,6 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Select.select sub filter
   | AlgProduct(_, a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
-  | AlgRenameTable(_, a, b) ->
-    new Rename.rename_table (feed_from_query a) (b)
+  | AlgRename(_, a, b) ->
+    new Rename.rename (feed_from_query a) (b)
 

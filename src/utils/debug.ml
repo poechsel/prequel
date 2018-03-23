@@ -91,12 +91,12 @@ let graphviz_instrs_of_algebra alg =
             @ [Printf.sprintf node !uid "selection" u;
                Printf.sprintf edge_label !uid a_lbl (string_of_alg_expr expr)]
 
-    | AlgRenameTable (u, a, name) ->
+    | AlgRename (u, a, rename) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
       !uid, a_str 
-            @ [Printf.sprintf node !uid "rename_table" u;
-               Printf.sprintf edge_label !uid a_lbl name]
+            @ [Printf.sprintf node !uid "rename" u;
+               Printf.sprintf edge_label !uid a_lbl (String.concat ", " (List.map (fun (a, b) -> string_of_header a ^ "=" ^ string_of_header b) rename))]
 
 
   in conv_alg alg
