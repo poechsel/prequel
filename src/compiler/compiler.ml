@@ -65,7 +65,13 @@ let compile query =
     | x, ""-> 
       compile_relation x
     | x, y-> 
-      AlgRenameTable(new_uid(), compile_relation x, y)
+      let compiled_x = compile_relation x in
+      let headers = MetaQuery.get_headers compiled_x in
+      let rename_op = 
+        Array.map (fun (a, b) -> (a, b), (y, b)) headers
+        |> Array.to_list
+      in 
+      AlgRename(new_uid(), compiled_x, rename_op)
     
 
   and compile_relation rel = 
@@ -87,7 +93,6 @@ let compile query =
          - select_cond1(select_cond2(...)) = select_(cond1/\cond2)(...)
             This remark could be usefull for optimisations
       *)
-      if List.length disjunctive_clauses > 0 then 
         let attr_from_select s = match s with 
           | (a, b), None 
           | (a, _), Some b -> Attribute (a, b) 
@@ -112,7 +117,6 @@ let compile query =
           ) layer expr
         in List.map convert_and_in disjunctive_clauses
            |> merge_list (fun a b -> AlgUnion(new_uid (), a, b))
-      else layer
 
 
   in compile_query query
