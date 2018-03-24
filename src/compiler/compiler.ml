@@ -135,22 +135,19 @@ let compile query =
               | _, _ ->
                 step_once_for_joins tl (x::acc) tables
             else 
-              let a, b = step_once_for_joins tl (x::acc) tables in
-              x::a, b
+              step_once_for_joins tl (x::acc) tables 
 
           | x::tl ->
-              let a, b = step_once_for_joins tl (x::acc) tables in
-              x::a, b
+              step_once_for_joins tl (x::acc) tables
 
         in 
         let rec repeat_joins_steps and_exprs previous tables =
-          let _ = Printf.printf "-> step %d\n" (List.length tables) in
+          let _ = Printf.printf "-> step %d %d\n" (List.length and_exprs) (List.length previous) in
           if List.length previous = List.length and_exprs then
             and_exprs, tables
           else 
             let and_exprs', tables' = step_once_for_joins and_exprs [] tables in
             repeat_joins_steps and_exprs' and_exprs tables'
-
                 
         in 
         let convert_and_in and_exprs = 
