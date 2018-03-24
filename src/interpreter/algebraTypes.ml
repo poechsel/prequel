@@ -16,6 +16,7 @@ type algebra =
   | AlgUnion of uid * algebra * algebra
   | AlgMinus of uid * algebra * algebra
   | AlgProjection of uid * algebra * header array
+  | AlgJoin       of uid * (algebra * expression) * (algebra * expression)
   | AlgInput of uid * string (* for input nodes *)
   | AlgProduct of uid * algebra * algebra
   | AlgSelect of uid * algebra * expression
@@ -41,3 +42,19 @@ class virtual feed_interface =
       let _ = Printf.fprintf channel "%s\n" s in
       aux ()
   end
+
+
+let attributes_of_condition cond =
+  let rec aux c acc =
+    match c with
+    | AlgBinOp(_, a, b) ->
+      aux a acc
+      |> aux b
+    | AlgAtom (Ast.Attribute x) ->
+      x :: acc
+    | _ ->
+      acc
+  in aux cond [] 
+     |> List.sort_uniq Pervasives.compare 
+
+

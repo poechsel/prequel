@@ -7,6 +7,7 @@ let get_uid_from_alg a =
   | AlgMinus(u, _, _)
   | AlgProjection(u, _, _)
   | AlgProduct(u, _, _)
+  | AlgJoin(u, _, _)
   | AlgSelect(u, _, _)
   | AlgRename(u, _, _) ->
     u
@@ -21,6 +22,8 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       Union.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
     | AlgMinus(_, a, b) ->
       Minus.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
+    | AlgJoin(_, (a, _), (b, _)) ->
+      Join.get_headers (get_headers ~f:f a) (get_headers ~f:f b)
     | AlgProjection(_, a, headers) ->
       let _ = get_headers ~f:f a in
       headers
@@ -55,6 +58,12 @@ let rec feed_from_query (query : algebra) : feed_interface =
     let sub = feed_from_query a in
     let filter = Arithmetics.compile_filter (get_headers a) filter in
     new Select.select sub filter
+  | AlgJoin(_, (a, expr_a), (b, expr_b)) ->
+    let sub_a = feed_from_query a in
+    let eval_a = Arithmetics.compile_value (get_headers a) expr_a in
+    let sub_b = feed_from_query b in
+    let eval_b = Arithmetics.compile_value (get_headers b) expr_b in
+    new Join.join (sub_a, eval_a) (sub_b, eval_b)
   | AlgProduct(_, a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRename(_, a, b) ->

@@ -29,8 +29,9 @@ let clean_ast ast =
   ast_disj
 
 let compile_and_optimize ast =
-  let alg = Compiler.compile ast in
-  alg
+  Compiler.compile ast 
+  |> OptimisationPass.push_down_select
+  |> OptimisationPass.select_compressor
 
 
 let action params ast = 

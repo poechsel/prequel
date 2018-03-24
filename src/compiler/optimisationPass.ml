@@ -1,19 +1,4 @@
 open AlgebraTypes
-open Ast
-
-let attributes_of_condition cond =
-  let rec aux c acc =
-    match c with
-    | AlgBinOp(_, a, b) ->
-      aux a acc
-      |> aux b
-    | AlgAtom (Attribute x) ->
-      x :: acc
-    | _ ->
-      acc
-  in aux cond [] 
-     |> List.sort_uniq Pervasives.compare 
-
 
 let exclusive_join l1 l2 =
   let rec aux l acc = 
@@ -66,6 +51,11 @@ let push_down_select query =
         let i2, b' = analyze_sub b in
         exclusive_join i1 i2, AlgProduct(u, a', b')
        
+      | AlgJoin(u, (a, expr_a), (b, expr_b)) ->
+        let i1, a' = analyze_sub a in 
+        let i2, b' = analyze_sub b in
+        exclusive_join i1 i2, AlgJoin(u, (a', expr_a), (b', expr_b))
+
       | AlgProjection(u, a, headers) ->
         let i, a' = analyze_sub a in
         i, AlgProjection(u, a', headers)
@@ -102,6 +92,8 @@ let rec select_compressor alg =
     AlgMinus(u, (select_compressor a), (select_compressor b))
   | AlgProduct(u, a, b) ->
     AlgProduct(u, (select_compressor a), (select_compressor b))
+  | AlgJoin(u, (a, expr_a), (b, expr_b)) ->
+    AlgJoin(u, (select_compressor a, expr_a), (select_compressor b, expr_b))
   | AlgRename(u, a, b) ->
     AlgRename(u, select_compressor a, b)
   | AlgProjection(u, a, b) ->

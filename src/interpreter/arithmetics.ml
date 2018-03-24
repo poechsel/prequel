@@ -71,19 +71,17 @@ let rec execute_value expr env =
       in Number (fct r l)
 
 
-let alg_expr_of_ast_expr expr = 
-  let rec c_cond cond = 
-    match cond with
-    | DisjCompOp(op, a, b) ->
-      AlgBinOp(op, c_expr a, c_expr b)
-    | _ -> failwith "unexpected type of condition"
-  and c_expr expr = 
-    match expr with
-    | AstExprOp(op, a, b) ->
-      AlgBinOp(op, c_expr a, c_expr b)
-    | AstAtom a ->
-      AlgAtom a
-  in c_cond expr
+let rec alg_expr_of_ast_cond cond = 
+  match cond with
+  | DisjCompOp(op, a, b) ->
+    AlgBinOp(op, alg_expr_of_ast_expr a, alg_expr_of_ast_expr b)
+  | _ -> failwith "unexpected type of condition"
+and alg_expr_of_ast_expr expr = 
+  match expr with
+  | AstExprOp(op, a, b) ->
+    AlgBinOp(op, alg_expr_of_ast_expr a, alg_expr_of_ast_expr b)
+  | AstAtom a ->
+    AlgAtom a
 
     
 
