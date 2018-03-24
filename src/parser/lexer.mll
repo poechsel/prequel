@@ -12,7 +12,7 @@
 
 rule token = parse
 | [' ' '\t']    { token lexbuf }
-| '\n'          {incr_linenum lexbuf; token lexbuf}
+| '\n'          { incr_linenum lexbuf; token lexbuf }
 | eof           { EOF }
 | ";"           { ENDLINE }
 | "<"           { LT }

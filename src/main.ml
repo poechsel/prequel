@@ -27,7 +27,7 @@ let print_header () =
   |> print_endline;
 
   "MiniSQL version 1.1.                 \n" ^
-  "Enter .help for usage tips.          \n"
+  "Enter .help; for usage tips.         \n"
   |> faint
   |> print_endline
 
@@ -43,25 +43,42 @@ let print_error e =
 (** run_command : Command.t -> unit
     Attemps to run a top-level command. *)
 let run_command = function
-  | Command "help" ->
+  | Command ("help", None) ->
       print_string <|
-        (bold "           .help") ^ (faint " Displays this message.\n") ^
-        (bold "            .pwd") ^ (faint " Prints the current working directory.\n") ^
-        (bold "      .cd {path}") ^ (faint " Changes the current working directory.\n") ^
-        (bold " .debug {on/off}") ^ (faint " Enables or disables debug output.\n") ^
-        (bold ".pretty {on/off}") ^ (faint " Enables or disables pretty printing.\n")
+        (bold "           .help;") ^ (faint " Displays this message.\n") ^
+        (bold "            .pwd;") ^ (faint " Prints the current working directory.\n") ^
+        (bold "      .cd {path};") ^ (faint " Changes the current working directory.\n") ^
+        (bold " .debug {on/off};") ^ (faint " Enables or disables debug output.\n") ^
+        (bold ".pretty {on/off};") ^ (faint " Enables or disables pretty printing.\n")
 
-  | Command "debug" ->
+  | Command ("debug", Some "on") ->
       debug := true;
       print_endline <| faint "Debug output enabled."
 
-  | Command "pretty" ->
+  | Command ("debug", Some "off") ->
+      debug := false;
+      print_endline <| faint "Debug output disabled."
+
+  | Command ("pretty", Some "on") ->
       pretty := true;
       print_endline <| faint "Pretty printing enabled."
 
-  | Command "pwd" -> print_endline <| Sys.getcwd ()
-  | Command "cd"  -> () (* TODO *)
-  | Command _     -> print_error "Unknown command."
+  | Command ("pretty", Some "off") ->
+      pretty := false;
+      print_endline <| faint "Pretty printing disabled."
+
+  | Command ("cd", Some dir) ->
+      begin try
+        Sys.chdir dir;
+        print_endline <| faint "Changed working directory."
+      with Sys_error _ ->
+        print_error "The directory doesn't exist."
+      end
+
+  | Command ("pwd", None) ->
+      print_endline <| Sys.getcwd ()
+
+  | Command (_, _)  -> print_error "Unknown command."
   | Query q       -> run_query ~debug:!debug ~pretty:!pretty q
 
 
@@ -71,8 +88,14 @@ let start_repl () =
   print_header ();
 
   while true do
-    if Sys.getcwd () <> wd then
-      Printf.printf "(%s)" "foo";
+    if Sys.getcwd () <> wd then begin
+      let root = Fpath.v <| wd in
+      let curr = Fpath.v <| Sys.getcwd () in
+      match Fpath.relativize ~root curr with
+        | Some rel ->
+            Printf.printf "(%s)" (Fpath.to_string rel)
+        | _ -> ()
+    end;
 
     print_string <| bold "> ";
     flush stdout;
