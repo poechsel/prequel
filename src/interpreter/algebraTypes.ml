@@ -30,6 +30,16 @@ class virtual feed_interface =
     method virtual next : feed_result option
     method virtual headers : header array
     method virtual reset : unit
+
+    method to_list : feed_result list =
+      let rec aux acc = 
+        match self#next with
+        | None -> 
+          List.rev acc
+        | Some x ->
+          aux (x::acc)
+      in aux []
+
     method save (channel : out_channel) : unit =
       let rec aux () = 
         match self#next with

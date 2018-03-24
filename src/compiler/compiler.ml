@@ -128,8 +128,6 @@ let compile query =
               let table_rhs, tables'' = list_find_and_remove tables' (fun x -> Array.exists ((=) expr_rhs) @@ MetaQuery.get_headers x) in
               match table_lhs, table_rhs with
               | Some x, Some y ->
-                let _ = print_string "yes\n" in
-                let _ = Printf.printf "%d %d %d \n" (List.length tables) (List.length tables') (List.length tables'') in
                 let tables = (AlgJoin(new_uid(), (x, lhs), (y, rhs)) :: tables'') in
                 step_once_for_joins tl acc tables
               | _, _ ->
@@ -142,7 +140,6 @@ let compile query =
 
         in 
         let rec repeat_joins_steps and_exprs previous tables =
-          let _ = Printf.printf "-> step %d %d\n" (List.length and_exprs) (List.length previous) in
           if List.length previous = List.length and_exprs then
             and_exprs, tables
           else 
@@ -151,6 +148,7 @@ let compile query =
                 
         in 
         let convert_and_in and_exprs = 
+          (* remove next line to disable joins *)
           let and_exprs, product_terms = repeat_joins_steps and_exprs [] product_terms in
           let layer = compute_final_term product_terms in
           List.fold_left (fun previous current ->

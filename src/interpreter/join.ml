@@ -1,6 +1,43 @@
 let get_headers h_a h_b =
   Array.append h_a h_b
 
+
+let find_all_elements elements target_value evaluator = 
+  let rec binary_search low high =
+    if low <= high then
+        let middle = low + (high - low) / 2 in
+        let v = evaluator elements.(middle) in
+        if v = target_value then 
+          middle
+        else if v < target_value then
+          binary_search (middle+1) high
+        else 
+          binary_search low (middle-1)
+    else 
+      -1
+  in 
+  let indice = binary_search 0 (Array.length elements - 1)
+  in 
+  if indice < 0 then 
+    None
+  else 
+    let start_section = 
+      let s = ref indice in
+      let _ = while !s > 0 && evaluator elements.(!s-1) = target_value do
+        decr s
+      done 
+      in !s
+    in 
+    let rec aux i acc =
+         if i >= Array.length elements then
+           List.rev acc
+         else if evaluator elements.(i) <> target_value then
+           List.rev acc
+         else 
+           aux (i+1) (elements.(i) :: acc)
+    in Some (aux start_section [])
+
+
 class join ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
            ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
   object(self)
@@ -11,29 +48,40 @@ class join ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result
     val left_expr = expr_a
     val right_expr = expr_b
     val mutable current = None
+    val mutable right_interval = None
+    val mutable initialized = false
+    val mutable right_values = [||]
 
     method next =
-      let right_x = match right#next with
-        | None -> let _ = right#reset in 
-          let _ = current <- None in (* invalidate the previous entry -> we must compute the next one *)
-          right#next
-        | Some x -> Some x
+      let _ = if (not initialized) then
+          let _  = initialized <- true in
+          let _ = right_values <-
+              right#to_list 
+              |> Array.of_list
+          in ()
       in
-      let _ = match current with
-      | None -> current <- left#next
-      | _ -> ()
-      in 
-      match (current, right_x) with
-      | Some x, Some y ->
-        if left_expr x = right_expr y then
-          Some (Array.append x y)
-        else 
-          self#next
-      | _ -> None
+      match right_interval with
+      | None ->
+        let _ = current <- left#next in begin
+          match current with
+          | None -> None
+          | Some x -> 
+            right_interval <- find_all_elements right_values (left_expr x) right_expr;
+            self#next
+        end 
+      | Some (hd::tl) ->
+        let _ = right_interval <- Some tl in
+        begin match current with
+          | None -> None
+          | Some x ->
+            Some (Array.append x hd)
+        end 
+      | Some [] ->
+        right_interval <- None;
+        self#next
 
     method reset =
-      let _ = left#reset in
-      right#reset
+      left#reset
 
     method headers =
       get_headers left#headers right#headers
