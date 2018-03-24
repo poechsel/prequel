@@ -68,11 +68,20 @@ and_condition:
 
 at_condition:
     | LPAR condition RPAR                   { $2 }
-    | add_expression EQ add_expression      { AstCompOp(Eq, $1, $3) }
-    | add_expression LT add_expression      { AstCompOp(Lt, $1, $3) }
+    | add_expression comp add_expression    { AstCompOp(Eq, $1, $3) }
     | add_expression IN LPAR query RPAR     { AstIn($1, $4) }
     | add_expression NOT IN LPAR query RPAR { AstNotIn($1, $5) }
         
+
+/* Comparison operators */
+comp:
+  | LT  { Lt }
+  | GT  { Gt }
+  | LEQ { Leq }
+  | GEQ { Geq }
+  | EQ  { Eq }
+  | NEQ { Neq }
+
 
 /* Expressions */
 add_expression:

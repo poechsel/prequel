@@ -14,19 +14,19 @@ let pretty = ref false
 (** print_header : unit -> unit
     Prints the welcome message to the standard output. *)
 let print_header () =
-
-  "           _       _           _     \n" ^
-  "          (_)     (_)         | |    \n" ^
-  " _ __ ___  _ _ __  _ ___  __ _| |    \n" ^
-  "| '_ ` _ \\| | '_ \\| / __|/ _` | |  \n" ^
-  "| | | | | | | | | | \\__ \\ (_| | |  \n" ^
-  "|_| |_| |_|_|_| |_|_|___/\\__, |_|   \n" ^
-  "                            | |      \n" ^
-  "                            |_|      \n"
+  "                                                    888\n" ^
+  "                                                    888\n" ^
+  "88888b.  888d888 .d88b.   .d88888 888  888  .d88b.  888\n" ^
+  "888  88b 888P   d8P  Y8b d88  888 888  888 d8P  Y8b 888\n" ^
+  "888  888 888    88888888 888  888 888  888 88888888 888\n" ^
+  "888 d88P 888    Y8b.     Y88b 888 Y88b 888 Y8b.     888\n" ^
+  "88888P   888      Y8888    Y88888   Y88888   Y8888  888\n" ^
+  "888                           888                      \n" ^
+  "888                           888                      \n"
   |> blue
   |> print_endline;
 
-  "MiniSQL version 1.1.                 \n" ^
+  "Prequel version 1.1.                 \n" ^
   "Enter .help; for usage tips.         \n"
   |> faint
   |> print_endline
@@ -113,24 +113,46 @@ let start_repl () =
   done
 
 
-(** start_single : in_channel -> unit
+(** start_single : str -> str -> str -> unit
     Runs MiniSQL on a single file input. *)
-let start_single chan =
+let start_single file output graph =
+  let chan = open_in file in
+  let output =
+    if output = "" then
+      stdout
+    else
+      open_out output in
+  let graph =
+    if graph = "" then
+      None
+    else
+      Some graph in
+
   match parse_input chan with
-  | Query q -> run_query q
+  | Query q -> run_query ~output ~graph q
   | _       -> failwith "Not a valid SQL query."
 
 
 let () =
   let path = ref "" in
+  let output = ref "" in
+  let graph = ref "" in
+
   let usage =
-    "MiniSQL version 1.1.\n" ^
-    "Usage: ./minisql [path]\n" ^
+    "Prequel version 1.1.\n" ^
+    "Usage: ./prequel [path]\n" ^
     "When path is not specified, runs in REPL mode." in
 
-  Arg.parse [] ((:=) path) usage;
+  let speclist = [
+    "--output", Arg.Set_string output, "A file in which to write the output.";
+    "--graph", Arg.Set_string graph, "A file in which to save a graph of the term."] in
+
+  Arg.parse speclist ((:=) path) usage;
 
   if !path = "" then
     start_repl ()
   else
-    start_single <| open_in !path
+    start_single
+      !path
+      !output
+      !graph

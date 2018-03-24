@@ -1,6 +1,6 @@
 #!/bin/sh
 if command -v rlwrap>/dev/null 2>&1; then
-    rlwrap ./main.native
+    rlwrap ./main.native $*
 else
-    ./main.native
+    ./main.native $*
 fi

@@ -1,52 +1,57 @@
-# MiniSQL
+![Prequel](http://amaia.at/prequel.png)
 
-## How to use and build
+*A small SQL engine for CSV files.*
 
-### Build
 
-Before begin able to build minisql, several dependencies must be installed with `opam`:
+# About this project.
 
-- `ocamlbuild`
-- `csv`
-- `ounit2` (optional): for the unit tests, but unfortunately none are implemented right now
+This project is an OCaml implementation of a SQL engine for CSV files.
 
-Then, to build minisql execute
+It was written by [Pierre Oechsel](https://github.com/poechsel) and [Romain Liautaud](https://github.com/liautaud) for the [DBDM course](https://perso.liris.cnrs.fr/emmanuel.coquery/dbdm/DBDM-2018-project.html) of the ENS de Lyon.
 
+
+# Installation guide.
+
+This project depends on a few packages, which can be installed using [OPAM](https://opam.ocaml.org/doc/Install.html):
 ```
-make
-```
-
-
-### How to use
-
-Minisql comes with a simple command line interface:
-
-After compiling, to execute minisql you have to use the command `./main.native`.
-It takes the following parameters
-
-- `-repl` use the repl mode
-- `-o <file>` to pass the file in which we want to output the result of the query
-- `-graphviz <file>` generate a graphviz plot of the relationnal algebra tree. The graphviz file is saved to `<file>` It can be compiled afterward with `dot -Tpdf <file> -o <file.pdf>`
-
-An other parameter, which is a file containing a query to be executed can be given. Example:
-
-```
-./main.native test.sql -o test.out -graphviz test.dot
+opam install ocamlbuild
+opam install ppx_deriving
+opam install fpath
+opam install csv
 ```
 
-This will:
+Then, building the project is as simple as running `make`.
 
-- execute the query present in test.sql
-- save the result to test.out
-- generate a graphviz plot to test.dot
-
-**Remarks:**
-
-- When using repl mode, you can use `rlwrap ./main.native` instead of `./main.native` in order to use arrow keys for easier manipulation.
-- When using repl mode, requests must end by semi-colon **;**. This semi-colon is facultative if the query comes from a file.
+_For a better experience using the REPL, we recommand that you install [rlwrap](https://github.com/hanslub42/rlwrap)._
 
 
-## Features:
+## Running unit tests.
+
+To run unit tests, you have to install [OUnit2](http://ounit.forge.ocamlcore.org/api-ounit/OUnit2.html) using `opam install ounit2`, and then run `make test`.
+
+
+# Usage.
+
+To play around with the engine, just run `./prequel` to get a SQLite-like REPL.
+
+Here are a few examples of queries:
+
+- `SELECT * FROM "tests/sources/projets.csv" p;`
+- `SELECT * FROM "tests/sources/projets.csv" p WHERE p.idp > p.responsable;`
+
+You can also use the engine from the command line:
+```
+Prequel version 1.1.
+Usage: ./prequel [path]
+When path is not specified, runs in REPL mode.
+  --output A file in which to write the output.
+  --graph A file in which to save a graph of the term.
+  -help  Display this list of options
+  --help  Display this list of options
+```
+
+
+# Features.
 
 ### What it is capable now:
 
