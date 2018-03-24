@@ -30,6 +30,10 @@ let to_file headers file offset buffer=
     done in
   close_out channel
 
+type init_results = 
+    InRam of string array array * int
+  | InHdd of string list
+
 let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed = 
   (* to initialize our exeternal sort, we sort some small parts of the file
      Because Array.sort is far more efficient than List.sort, we use an array buffer
@@ -44,7 +48,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
         Returns a list of file names representing these chunks
     *)
     match feed#next with
-    | None when current_size > 0 ->
+    | None ->
       let _ = 
         for i = current_size to size_chunk - 1 do
           (* only the start of the buffer is filled there.
@@ -54,9 +58,15 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
           buffer.(i) <- ([||], [||])
         done in
       let _ = sort headers keys in
-      let file_name = TempManager.new_temp () in
-      let _ = to_file headers file_name (size_chunk - current_size) buffer in
-      file_name::filelist
+      if filelist = [] then
+        InRam (Array.map snd buffer, (size_chunk - current_size))
+      else 
+        let file_name = TempManager.new_temp () in
+        let _ = to_file headers file_name (size_chunk - current_size) buffer in
+        if current_size = 0 then
+          InHdd(filelist)
+        else
+          InHdd(file_name::filelist)
     | Some x ->
       let () = buffer.(current_size) <- evaluate_row keys x, x in
       if current_size + 1 = size_chunk then
@@ -67,7 +77,6 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
         aux 0 (file_name::filelist)
       else 
         aux (current_size + 1) filelist
-    | _ -> filelist
   in aux 0 []
 
 
@@ -144,8 +153,12 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
 
 let external_sort feed headers keys =
   let csvs = initialize_sort headers keys feed in
-  let file = submerges headers keys csvs in
-  new InputCachedFile.inputCachedFile file
+  match csvs with
+  | InRam(datas, offset) ->
+    new InputArray.inputArray headers datas offset
+  | InHdd(csvs) ->
+    let file = submerges headers keys csvs in
+    new InputCachedFile.inputCachedFile file
 
 
 
