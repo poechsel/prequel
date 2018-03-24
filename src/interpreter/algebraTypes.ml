@@ -48,5 +48,5 @@ class virtual feed_interface =
       aux ()
 
     method print : unit =
-      print_table <| (Array.map snd self#headers) :: self#to_list
+      Utils.print_table @@ (Array.map snd self#headers) :: self#to_list
   end

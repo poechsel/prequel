@@ -1,5 +1,3 @@
-let (<|) = (@@)
-
 let array_concat s a = 
   String.concat s (Array.to_list a)
 
@@ -45,7 +43,7 @@ let length_utf8 s =
     Pretty-prints a given table of strings. *)
 let print_table m =
   let width = 20 in
-  let cells = Array.length <| List.hd m in
+  let cells = Array.length @@ List.hd m in
   let delim = String.make ((width + 3) * cells + 1) '-' in
 
   let print_cell cell =

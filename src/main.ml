@@ -1,5 +1,4 @@
 open Print
-open Utils
 open Common
 open Errors
 open Command
@@ -44,7 +43,7 @@ let print_error e =
     Attemps to run a top-level command. *)
 let run_command = function
   | Command ("help", None) ->
-      print_string <|
+      print_string @@
         (bold "           .help;") ^ (faint " Displays this message.\n") ^
         (bold "            .pwd;") ^ (faint " Prints the current working directory.\n") ^
         (bold "      .cd {path};") ^ (faint " Changes the current working directory.\n") ^
@@ -53,30 +52,30 @@ let run_command = function
 
   | Command ("debug", Some "on") ->
       debug := true;
-      print_endline <| faint "Debug output enabled."
+      print_endline @@ faint "Debug output enabled."
 
   | Command ("debug", Some "off") ->
       debug := false;
-      print_endline <| faint "Debug output disabled."
+      print_endline @@ faint "Debug output disabled."
 
   | Command ("pretty", Some "on") ->
       pretty := true;
-      print_endline <| faint "Pretty printing enabled."
+      print_endline @@ faint "Pretty printing enabled."
 
   | Command ("pretty", Some "off") ->
       pretty := false;
-      print_endline <| faint "Pretty printing disabled."
+      print_endline @@ faint "Pretty printing disabled."
 
   | Command ("cd", Some dir) ->
       begin try
         Sys.chdir dir;
-        print_endline <| faint "Changed working directory."
+        print_endline @@ faint "Changed working directory."
       with Sys_error _ ->
         print_error "The directory doesn't exist."
       end
 
   | Command ("pwd", None) ->
-      print_endline <| Sys.getcwd ()
+      print_endline @@ Sys.getcwd ()
 
   | Command (_, _)  -> print_error "Unknown command."
   | Query q       -> run_query ~debug:!debug ~pretty:!pretty q
@@ -89,24 +88,24 @@ let start_repl () =
 
   while true do
     if Sys.getcwd () <> wd then begin
-      let root = Fpath.v <| wd in
-      let curr = Fpath.v <| Sys.getcwd () in
+      let root = Fpath.v @@ wd in
+      let curr = Fpath.v @@ Sys.getcwd () in
       match Fpath.relativize ~root curr with
         | Some rel ->
             Printf.printf "(%s)" (Fpath.to_string rel)
         | _ -> ()
     end;
 
-    print_string <| bold "> ";
+    print_string @@ bold "> ";
     flush stdout;
 
     begin try
       parse_input stdin
       |> run_command
     with
-      | SyntaxError (s)         -> print_error <| "Syntax error: " ^ s
-      | SemanticError (s)       -> print_error <| "Query semantic error: " ^ s
-      | InterpretationError (s) -> print_error <| "Interpretation error: " ^ s
+      | SyntaxError (s)         -> print_error @@ "Syntax error: " ^ s
+      | SemanticError (s)       -> print_error @@ "Query semantic error: " ^ s
+      | InterpretationError (s) -> print_error @@ "Interpretation error: " ^ s
     end;
 
     print_newline ()

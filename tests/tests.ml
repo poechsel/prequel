@@ -67,7 +67,7 @@ let compare_csvs mode a b =
     | Normal ->
         (* In normal mode, we use a hashtable to count the
            number of occurences of each row in the result. *)
-        let occs = Hashtbl.create <| Array.length ra in
+        let occs = Hashtbl.create @@ Array.length ra in
         ra |> Array.iter (fun row ->
           let row = Csv.Row.to_list row in
           Hashtbl.replace occs row 0);

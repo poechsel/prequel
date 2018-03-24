@@ -2,7 +2,6 @@ open Ast
 open Lexer
 open Parser
 open Errors
-open Utils
 open MetaQuery
 
 
@@ -17,7 +16,7 @@ let parse_input channel =
     Parsing.clear_parser ();
     command
   with _ ->
-    raise <| make_syntax_error
+    raise @@ make_syntax_error
       (Lexing.lexeme_start_p buffer)
       (Lexing.lexeme buffer)
 
