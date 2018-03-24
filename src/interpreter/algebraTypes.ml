@@ -1,3 +1,5 @@
+open Utils
+
 type header = string * string
 [@@deriving show]
 
@@ -29,15 +31,26 @@ class virtual feed_interface =
     method virtual next : feed_result option
     method virtual headers : header array
     method virtual reset : unit
+
     method save (channel : out_channel) : unit =
       let rec aux () = 
         match self#next with
         | None -> ()
         | Some x -> 
-          let s = Utils.array_concat ", " x in
+          let s = array_concat ", " x in
           Printf.fprintf channel "%s\n" s;
           aux ()
-      in let s = Utils.array_concat ", " (Array.map snd self#headers) in
+      in let s = array_concat ", " (Array.map snd self#headers) in
       let _ = Printf.fprintf channel "%s\n" s in
       aux ()
+
+    method to_list : feed_result list =
+      let rec aux () =
+        match self#next with
+        | None   -> []
+        | Some x -> x :: (aux ()) in
+      aux ()
+
+    method print : unit =
+      Utils.print_table @@ (Array.map snd self#headers) :: self#to_list
   end

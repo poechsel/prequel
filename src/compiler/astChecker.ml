@@ -8,7 +8,7 @@ let headers_union a b =
   if List.for_all2 (=) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) then
     a
   else 
-    raise (Errors.BadQuery "Some headers are different")
+    raise (Errors.SemanticError "Some headers are different")
 
 let headers_join a b = 
   a @ b
@@ -50,7 +50,7 @@ let check_coherence query =
               | Some x -> (a, x)
             ) x, x
       in let _ = if headers_has_duplicate (List.map snd headers) then
-             raise (Errors.BadQuery "A duplicate entry was found.\
+             raise (Errors.SemanticError "A duplicate entry was found.\
                                      Warning: a.foo and b.foo are \
                                      considered as duplicate because \
                                      their name (\"foo\") are the same.")
@@ -69,7 +69,7 @@ let check_coherence query =
             InputCachedFile.get_headers name
             |> Array.to_list
           with e ->
-            raise (Errors.BadQuery (Printf.sprintf "error: file \"%s\" doesn't exists" name)) 
+            raise (Errors.SemanticError (Printf.sprintf "error: file \"%s\" doesn't exists" name)) 
         in
         headers, AstTable name
       | AstCompiled x ->
@@ -88,13 +88,13 @@ let check_coherence query =
     | AstIn(e, sub) ->
       let h, sub = check_query headers sub
       in if List.length h != 1 then
-        raise (Errors.BadQuery "the subquery inside a 'in' must have only one row")
+        raise (Errors.SemanticError "the subquery inside a 'in' must have only one row")
       else 
         AstIn(c_e e, sub)
     | AstNotIn(e, sub) ->
       let h, sub = check_query headers sub
       in if List.length h != 1 then
-        raise (Errors.BadQuery "the subquery inside a 'not in' must have only one row")
+        raise (Errors.SemanticError "the subquery inside a 'not in' must have only one row")
       else 
         AstNotIn(c_e e, sub)
 
@@ -110,7 +110,7 @@ let check_coherence query =
     match atom with
     | Attribute attr ->
       let _ = if not @@ List.exists (fun x -> attr = x) headers then
-          raise (Errors.BadQuery (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_atom atom)))
+          raise (Errors.SemanticError (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_atom atom)))
       in 
       (* send error *)
       Attribute attr

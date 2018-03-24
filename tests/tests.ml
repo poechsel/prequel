@@ -1,4 +1,6 @@
+open Utils
 open Common
+open Command
 open OUnit2
 open Csv
 
@@ -135,19 +137,17 @@ let make_case file =
       parse_line (input_line file) "" in
 
     let hash = Digest.string query |> Digest.to_hex in
-    let temp_file = Filename.temp_file "minisql" hash in
-
-    let params = {
-      repl = ref false;
-      out = ref temp_file;
-      request = ref "";
-      graphviz = ref ""} in
+    let (temp_path, temp_chan) = 
+      Filename.open_temp_file "minisql" hash in
 
     let buffer = Lexing.from_string query in
-    let ast = Common.parse_line ~with_endline:true buffer in
-    Common.action params ast;
+    let command = Parser.main Lexer.token buffer in
+    begin match command with
+      | Query q -> Common.run_query ~output:temp_chan q
+      | _       -> assert_failure "Not a valid SQL query."
+    end;
 
-    open_in temp_file
+    open_in temp_path
     |> Csv.of_channel ~has_header:true
     |> compare_csvs mode csv
 
