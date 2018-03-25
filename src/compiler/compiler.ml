@@ -149,6 +149,8 @@ let compile query =
         in 
         let convert_and_in and_exprs = 
           (* remove next line to disable joins *)
+          (* this step could be removed to due an optimisation pass doing sensibly the same thing,
+             but it allows to add a bit more joins*)
           let and_exprs, product_terms = repeat_joins_steps and_exprs [] product_terms in
           let layer = compute_final_term product_terms in
           List.fold_left (fun previous current ->

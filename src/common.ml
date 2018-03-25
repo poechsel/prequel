@@ -31,6 +31,7 @@ let clean_ast ast =
 let compile_and_optimize ast =
   Compiler.compile ast 
   |> OptimisationPass.push_down_select
+  |> OptimisationPass.create_joins
   |> OptimisationPass.select_compressor
 
 

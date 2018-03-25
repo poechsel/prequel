@@ -103,6 +103,54 @@ let rec select_compressor alg =
   | AlgInput(u, str) ->
     AlgInput(u, str)
 
+(* deduce joins *)
+let create_joins alg = 
+  let tbl = Hashtbl.create 10 in
+  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
+  let get_headers query =
+    Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
+  in 
+
+  let rec visitor alg = 
+    match alg with
+    | AlgSelect(u, AlgProduct(u', lhs_query, rhs_query), (AlgBinOp(Ast.Eq, lhs_expr, rhs_expr) as expr)) ->
+      let attrs_lhs_expr = attributes_of_condition lhs_expr in
+      let attrs_rhs_expr = attributes_of_condition rhs_expr in
+      if List.length attrs_lhs_expr = 1 && List.length attrs_rhs_expr = 1 
+         && fst @@ List.hd attrs_lhs_expr <> fst @@ List.hd attrs_rhs_expr then 
+        let a_lhs = List.hd attrs_lhs_expr in
+        let a_rhs = List.hd attrs_rhs_expr in
+        let h_lhs = get_headers lhs_query in
+        let h_rhs = get_headers rhs_query in
+        let in_l e l = Array.exists ((=) e) l in
+        if in_l a_lhs h_lhs && in_l a_rhs h_rhs then
+          AlgJoin(new_uid(), (visitor lhs_query, lhs_expr), (visitor rhs_query, rhs_expr))
+        else if in_l a_lhs h_rhs && in_l a_rhs h_lhs then
+          AlgJoin(new_uid(), (visitor lhs_query, rhs_expr), (visitor rhs_query, lhs_expr))
+        else 
+          AlgSelect(u, AlgProduct(u', visitor lhs_query, visitor rhs_query), expr)
+      else 
+        AlgSelect(u, AlgProduct(u', visitor lhs_query, visitor rhs_query), expr)
+
+    | AlgSelect(u, a, b) ->
+      AlgSelect(u, visitor a, b)
+    | AlgProjection(u, a, b) ->
+      AlgProjection(u, visitor a, b)
+    | AlgRename(u, a, b) ->
+      AlgRename(u, visitor a, b)
+    | AlgMinus(u, a, b) ->
+      AlgMinus(u, visitor a, visitor b)
+    | AlgUnion(u, a, b) ->
+      AlgUnion(u, visitor a, visitor b)
+    | AlgProduct(u, a, b) ->
+      AlgProduct(u, visitor a, visitor b)
+    | AlgJoin(u, (a, ea), (b, eb)) ->
+      AlgJoin(u, (visitor a, ea), (visitor b, eb))
+    | x -> x
+  in visitor alg
+
+
+
 
 (* Projections optimizer *)
       (*
