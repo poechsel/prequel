@@ -7,7 +7,7 @@
 %token <string> STRING
 %token <int> NUMBER
 %token SELECT WHERE HAVING GROUP BY FROM ORDER UNION MINUS
-%token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
+%token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA ASC DESC
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
 %start main
@@ -99,8 +99,12 @@ from:
   | FROM separated_list(COMA, relation) { $2 }
 where:
   | WHERE condition { $2 }
+order_criteria:
+  | add_expression      { ($1, Asc) }
+  | add_expression ASC  { ($1, Asc) }
+  | add_expression DESC { ($1, Desc) }
 order:
-  | ORDER BY separated_list(COMA, add_expression) { $3 }
+  | ORDER BY separated_list(COMA, order_criteria) { $3 }
 group:
   | GROUP BY separated_list(COMA, add_expression) { $3 }
 having:

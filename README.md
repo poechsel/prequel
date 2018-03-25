@@ -14,6 +14,7 @@ It was written by [Pierre Oechsel](https://github.com/poechsel) and [Romain Liau
 
 This project depends on a few packages, which can be installed using [OPAM](https://opam.ocaml.org/doc/Install.html):
 ```
+opam switch 4.05.0
 opam install ocamlbuild
 opam install ppx_deriving
 opam install menhir

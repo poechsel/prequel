@@ -35,7 +35,7 @@ let check_coherence query =
       let b_h, b' = c_qu b in
       headers_union a_h b_h, AstUnion(a', b')
 
-    | AstSelect(attributes, tables, selector) ->
+    | AstSelect(attributes, tables, selector, order, group, having) ->
       let headers_collection, tables = 
         let h, t = List.map (check_relation headers) tables 
                    |> List.split 
@@ -55,7 +55,7 @@ let check_coherence query =
                                      considered as duplicate because \
                                      their name (\"foo\") are the same.")
 
-      in headers, AstSelect(attributes, tables, selector)
+      in headers, AstSelect(attributes, tables, selector, order, group, having)
 
   and check_relation headers relation = 
     let headers, ast =
@@ -140,7 +140,7 @@ let rename_tables query =
       (m, a)
   in let rec ren_query env query = 
        match query with
-       | AstSelect (attributes, relations, where) ->
+       | AstSelect (attributes, relations, where, order, group, having) ->
          let env' = env in
          let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid)previous ) env' relations in
          let relations = List.map (fun (rel, c) ->
@@ -153,7 +153,7 @@ let rename_tables query =
              ren_attribute env'' x, b
            ) attributes
          in let where = Utils.option_map (ren_cond env'') where
-         in AstSelect(attributes, relations, where)
+         in AstSelect(attributes, relations, where, order, group, having)
        | AstUnion(a, b) ->
          AstUnion(ren_query env a, ren_query env b)
        | AstMinus(a, b) ->

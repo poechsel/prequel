@@ -16,10 +16,33 @@ Quick overview on optimisation for speed:
      ~ the mistery of the gc
 *)
 let evaluate_row keys row = 
-  Array.map (fun x -> x row) keys
+  Array.map (fun (f, _) -> f row) keys
 
 let serialize a b = Marshal.to_channel a b [Marshal.No_sharing]
 let deserialize = Marshal.from_channel
+
+
+(** Compares arrays a and b using the ordering from keys. *)
+let ordered_compare
+  (keys : ('b * Ast.ordering) array)
+  (a : 'a array)
+  (b : 'a array) : int =
+
+  let cmp x y = function
+    | Ast.Asc  -> (Pervasives.compare x y)
+    | Ast.Desc -> (Pervasives.compare x y) * (-1) in
+
+  let len = Array.length a in
+  let rec aux i =
+    if i >= len then
+      0
+    else
+      let c = cmp a.(i) b.(i) (snd keys.(i)) in
+      if c <> 0 then 
+        c
+      else 
+        aux (i + 1)
+  in aux 0
 
 
 let to_file headers file offset buffer=
@@ -39,8 +62,8 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
      Because Array.sort is far more efficient than List.sort, we use an array buffer
      to store everything we need *)
   let buffer = Array.make size_chunk (Obj.magic ()) in
-  let sort headers keys = 
-    Array.fast_sort (fun a b -> Pervasives.compare (fst a) (fst b)) buffer 
+  let sort () = 
+    Array.fast_sort (fun a b -> ordered_compare keys (fst a) (fst b)) buffer 
 
   in 
   let rec aux current_size filelist = 
@@ -57,7 +80,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
              start of the buffer *)
           buffer.(i) <- ([||], [||])
         done in
-      let _ = sort headers keys in
+      let _ = sort () in
       (* if the result fits in one chunk, then we keep it in ram without writing
          it to disk*)
       if filelist = [] then
@@ -73,7 +96,7 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
       let () = buffer.(current_size) <- evaluate_row keys x, x in
       if current_size + 1 = size_chunk then
         (* if the current chunk is larger than the authorized size, create a new file *)
-        let _ = sort headers keys in
+        let _ = sort () in
         let file_name = TempManager.new_temp () in
         let _ = to_file headers file_name 0 buffer in
         aux 0 (file_name::filelist)
@@ -124,13 +147,13 @@ let rec submerges ?(sub_groups_size=256) headers keys csvs =
   let subgroups = split_groups sub_groups_size csvs in
   let all_files = List.map (fun group ->
       let t = PriorityQueue.make (List.length group) 
-          (fun a b -> Pervasives.compare (fst a) (fst b)) 
+          (fun a b -> ordered_compare keys (fst (fst a)) (fst (fst b))) 
       in
       let _ = List.iter (fun file ->
           let channel = open_in_bin file in
           let el = deserialize channel in
-          ((evaluate_row keys el, el), channel)
-          |> PriorityQueue.insert t 
+          let row = ((evaluate_row keys el, el), channel) in
+          PriorityQueue.insert t row
         ) group in
       let write_to_csv = List.length subgroups = 1 in
       let file = TempManager.new_temp () in
@@ -164,7 +187,9 @@ let external_sort feed headers keys =
 
 
 
-class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression array) =
+class sort
+  (sub: AlgebraTypes.feed_interface)
+  (keys : (AlgebraTypes.expression * Ast.ordering) array) =
   object(self)
     inherit AlgebraTypes.feed_interface
 
@@ -172,7 +197,7 @@ class sort (sub: AlgebraTypes.feed_interface) (keys : AlgebraTypes.expression ar
     val mutable cache = []
     val keys = 
       let h = sub#headers in 
-      Array.map (Arithmetics.compile_value h) keys
+      Array.map (fun (v, ord) -> (Arithmetics.compile_value h v, ord)) keys
     val mutable sub = sub
     
     method next = 

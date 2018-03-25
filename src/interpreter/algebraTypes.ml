@@ -15,14 +15,15 @@ type expression =
 [@@deriving show]
 
 type algebra =
-  | AlgUnion of uid * algebra * algebra
-  | AlgMinus of uid * algebra * algebra
+  | AlgUnion      of uid * algebra * algebra
+  | AlgMinus      of uid * algebra * algebra
   | AlgProjection of uid * algebra * header array
   | AlgJoin       of uid * (algebra * expression) * (algebra * expression)
-  | AlgInput of uid * string (* for input nodes *)
-  | AlgProduct of uid * algebra * algebra
-  | AlgSelect of uid * algebra * expression
-  | AlgRename of uid * algebra * (header * header) list
+  | AlgInput      of uid * string (* for input nodes *)
+  | AlgProduct    of uid * algebra * algebra
+  | AlgSelect     of uid * algebra * expression
+  | AlgRename     of uid * algebra * (header * header) list
+  | AlgOrder      of uid * algebra * (expression * Ast.ordering) array
 [@@deriving show]
 
 type feed_result = string array

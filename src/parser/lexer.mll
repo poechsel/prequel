@@ -32,7 +32,7 @@ rule token = parse
 | ['0'-'9']+ as s   { NUMBER(int_of_string s)}
 | '"'[^ '"']*'"' as s   { STRING(String.sub s 1 (String.length s - 2))}
 | ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']* as s {
-    match String.lowercase s with
+    match String.lowercase_ascii s with
     | "select"  -> SELECT
     | "where"   -> WHERE
     | "having"  -> HAVING
@@ -42,6 +42,8 @@ rule token = parse
     | "union"   -> UNION
     | "by"      -> BY
     | "order"   -> ORDER
+    | "asc"     -> ASC
+    | "desc"    -> DESC
     | "and"     -> AND
     | "or"      -> OR
     | "not"     -> NOT

@@ -11,8 +11,8 @@ let print_attribute at =
 
 let rec add_table_to_query query table = 
   match query with
-  | AstSelect(at, tables, where) ->
-    AstSelect(at, table::tables, where)
+  | AstSelect(at, tables, where, order, group, having) ->
+    AstSelect(at, table::tables, where, order, group, having)
   | AstUnion(a, b) ->
     AstUnion(add_table_to_query a table, add_table_to_query b table)
   | AstMinus(a, b) ->
@@ -20,11 +20,14 @@ let rec add_table_to_query query table =
 
 let rec add_condition_to_query query cond = 
   match query with
-  | AstSelect(at, tables, where) ->
-    AstSelect(at, tables, begin match where with
+  | AstSelect(at, tables, where, order, group, having) ->
+    AstSelect(
+      at, tables, 
+      begin match where with
         | None -> Some ([[cond]], [])
-      | Some (x, y) -> Some (List.map (fun x -> cond::x) x, List.map (fun x -> cond :: x) y)
-    end)
+        | Some (x, y) -> Some (List.map (fun x -> cond::x) x, List.map (fun x -> cond :: x) y)
+      end,
+      order, group, having)
   | AstUnion(a, b) ->
     AstUnion(add_condition_to_query a cond, add_condition_to_query b cond)
   | AstMinus(a, b) ->
@@ -32,7 +35,7 @@ let rec add_condition_to_query query cond =
 
 let rec get_attributes_query query =
   match query with
-  | AstSelect(at, _, _) ->
+  | AstSelect(at, _, _, _, _, _) ->
     at
   | AstUnion(a, b) | AstMinus(a, b) ->
     get_attributes_query a
@@ -63,9 +66,30 @@ let compile query =
     | AstUnion (a, b) ->
       AlgUnion(new_uid (), compile_query ~project:project a, compile_query ~project:project b)
 
-    | AstSelect(attributes, tables, cond) ->
-      let product_terms = List.map compile_relation_renamed tables in
-      let layer = compile_where_clause product_terms cond in
+    | AstSelect(attributes, tables, cond, order, group, having) ->
+      (* First of all, we transform each table from the
+         WHERE clause into the corresponding relation,
+         surrounded by an `AlgRename` operator. *)
+      let relations = List.map compile_relation_renamed tables in
+      
+      (* Then, we compile all those relations into a series
+         of AlgProduct, surrounded by AlgSelect if needed.
+         We also "flatten" subqueries and use the AlgJoin
+         operator when that could improve performance. *)
+      let layer = compile_where_clause relations cond in
+
+      (* If needed, we sort the result using a AlgOrder. *)
+      let layer = match order with
+        | None   -> layer
+        | Some l -> 
+            AlgOrder(
+              new_uid (),
+              layer,
+              List.map (fun (expr, order) -> alg_expr_of_ast_expr expr, order) l
+              |> Array.of_list) in
+
+      (* Finally, we use an `AstProject` to restrict the
+         output to the attributes from the SELECT clause. *)
       let layer = match attributes with
         | [] -> layer
         | _ when project -> AlgProjection(new_uid(), layer, List.map fst attributes |> Array.of_list)
@@ -84,7 +108,6 @@ let compile query =
         |> Array.to_list
       in 
       AlgRename(new_uid(), compiled_x, rename_op)
-    
 
   and compile_relation rel = 
     match rel with
