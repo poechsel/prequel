@@ -23,7 +23,7 @@ let rec add_condition_to_query query cond =
   | AstSelect(at, tables, where) ->
     AstSelect(at, tables, begin match where with
         | None -> Some ([[cond]], [])
-      | Some (x, y) -> Some (List.map (fun x -> cond::x) x, List.map (fun x -> cond :: x) y)
+        | Some (x, y) -> Some (List.map (fun x -> cond::x) x, List.map (fun x -> cond :: x) y)
     end)
   | AstUnion(a, b) ->
     AstUnion(add_condition_to_query a cond, add_condition_to_query b cond)
@@ -66,11 +66,39 @@ let compile query =
     | AstSelect(attributes, tables, cond) ->
       let product_terms = List.map compile_relation_renamed tables in
       let layer = compile_where_clause product_terms cond in
-      let layer = match attributes with
-        | [] -> layer
-        | _ when project -> AlgProjection(new_uid(), layer, List.map fst attributes |> Array.of_list)
-        | _ -> layer
-      in layer
+      let renaming = 
+        attributes 
+        |> List.filter (fun attribute ->
+            match attribute with
+            | AstSeRenamed _ -> true
+            | _ -> false
+          )
+        |> List.map (fun attribute ->
+            match attribute with
+            | AstSeRenamed(AstSeRenamed(_, previous), next) ->
+              ("", previous), ("", next)
+            | AstSeRenamed(AstSeAttribute(previous), next) ->
+              previous, ("", next)
+            | _ -> failwith "incorrect error"
+          )
+      in let layer = 
+           if List.length renaming = 0 then 
+             layer
+           else 
+             AlgRename(new_uid(), layer, renaming)
+      in
+      let project_attributes = 
+        attributes 
+        |> List.map (fun attribute ->
+            match attribute with
+            | AstSeRenamed(_, name) -> 
+              ("", name)
+            | AstSeAttribute(x) ->
+              x
+          )
+        in if project then
+         AlgProjection(new_uid(), layer, project_attributes |> Array.of_list)
+        else layer
 
   and compile_relation_renamed rel =
     match rel with
@@ -109,8 +137,8 @@ let compile query =
             This remark could be usefull for optimisations
       *)
         let attr_from_select s = match s with 
-          | (a, b), None 
-          | (a, _), Some b -> Attribute (a, b) 
+          | AstSeAttribute x -> Attribute(x)
+          | AstSeRenamed(_, x) -> Attribute("", x)
         in
         let rec step_once_for_joins and_exprs acc tables = 
           (* during a step we try to merge two tables inside a join.

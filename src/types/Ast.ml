@@ -29,6 +29,13 @@ type expression =
   | AstAtom of atom
 [@@deriving show]
 
+type attribute_select =
+  | AstSeRenamed    of attribute_select * string
+  | AstSeExpr       of expression
+  | AstSeAttribute  of attribute        
+[@@deriving show]
+
+
 type ('a, 'b) relation =
   | AstSubQuery of ('a, 'b) query
   | AstTable of string
@@ -36,7 +43,7 @@ type ('a, 'b) relation =
 [@@deriving show]
 
 and ('a, 'b) query =
-  | AstSelect of attribute_renamed list * (('a, 'b) relation * string) list * 'a option
+  | AstSelect of attribute_select list * (('a, 'b) relation * string) list * 'a option
   | AstMinus of ('a, 'b) query * ('a, 'b) query
   | AstUnion of ('a, 'b) query * ('a, 'b) query
 [@@deriving show]

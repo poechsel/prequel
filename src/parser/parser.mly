@@ -31,12 +31,20 @@ attributes:
     | attributes_list { $1 }
 
 attributes_list:
-    | attribute_renamed                      { [$1] }
-    | attribute_renamed COMA attributes_list { $1 :: $3 }
+    | attribute_select_ren                      { [$1] }
+    | attribute_select_ren COMA attributes_list { $1 :: $3 }
 
-attribute_renamed:
-    | attribute AS ID { $1, Some $3 }
-    | attribute       { $1, None }
+attribute_select_ren:
+    | attribute_select       { $1 }
+    | attribute_select ID { AstSeRenamed ($1, $2) }
+    | attribute_select AS ID { AstSeRenamed ($1, $3) }
+
+attribute_select:
+    | add_expression        { match $1 with
+                                | AstAtom(Attribute x) -> AstSeAttribute x
+                                | x -> AstSeExpr x}
+
+
 
 attribute:
     | ID PUNKT ID     { $1, $3 }

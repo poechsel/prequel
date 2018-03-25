@@ -1,6 +1,6 @@
 open Utils
 
-type header = string * string
+type header = Ast.attribute
 [@@deriving show]
 
 let uid = ref 0

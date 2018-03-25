@@ -1,20 +1,26 @@
 open Ast
 open Utils
 
+module Headers = struct
+  type 'a t = 'a list
 
-let headers_union a b =
+  let union a b = 
   (* compute the union of a b.
      Works only if a contains the same headers as b *)
-  if List.for_all2 (=) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) then
-    a
-  else 
-    raise (Errors.SemanticError "Some headers are different")
+    if List.for_all2 (=) (List.sort (Pervasives.compare) a) (List.sort (Pervasives.compare) b) then
+      a
+    else 
+      raise (Errors.SemanticError "Some headers are different")
 
-let headers_join a b = 
-  a @ b
+  let join a b = 
+    a @ b
 
-let headers_has_duplicate l = 
-  List.length @@ List.sort_uniq (Pervasives.compare) l != List.length l
+  let has_duplicate l = 
+    List.length @@ List.sort_uniq (Pervasives.compare) l != List.length l
+
+end 
+
+
 
 let check_coherence query =
   (* Check if a given query seems 'coherent'. That means: 
@@ -23,37 +29,45 @@ let check_coherence query =
       - we do not have conflicts for row names
       - in and not in subqueries returns only one row
   *)
+  let uid_expr = ref 0 in
+  let new_uid_expr () = incr uid_expr; !uid_expr in
   let rec check_query headers query =
     let c_qu = check_query headers in
     match query with
     | AstMinus(a, b) ->
       let a_h, a' = c_qu a in
       let b_h, b' = c_qu b in
-      headers_union a_h b_h, AstMinus(a', b')
+      Headers.union a_h b_h, AstMinus(a', b')
     | AstUnion(a, b) ->
       let a_h, a' = c_qu a in
       let b_h, b' = c_qu b in
-      headers_union a_h b_h, AstUnion(a', b')
+      Headers.union a_h b_h, AstUnion(a', b')
 
     | AstSelect(attributes, tables, selector) ->
-      let headers_collection, tables = 
-        let h, t = List.map (check_relation headers) tables 
-                   |> List.split 
-        in merge_list headers_join h, List.fold_left (fun a b -> b::a ) [] t
-      in let headers_collection = headers_join headers_collection headers
-      in let selector = Utils.option_map (check_cond headers_collection) selector
-      in let headers, attributes = match attributes with
-          | [] -> headers_collection, List.map (fun a -> a, None) headers_collection
-          | x -> List.map (fun ((a, b), c) -> 
-              match c with 
-              | None -> (a, b) 
-              | Some x -> (a, x)
-            ) x, x
-      in let _ = if headers_has_duplicate (List.map snd headers) then
-             raise (Errors.SemanticError "A duplicate entry was found.\
-                                     Warning: a.foo and b.foo are \
-                                     considered as duplicate because \
-                                     their name (\"foo\") are the same.")
+      let headers_tables, tables = 
+        let headers, tables = tables
+                              |> List.map (check_relation headers)
+                              |> List.split 
+        in merge_list Headers.join headers
+         , tables
+      in let headers = Headers.join headers_tables headers
+      in let selector = Utils.option_map (check_cond headers) selector
+      in let headers, attributes = 
+           if attributes = [] then 
+             headers, List.map (fun at -> AstSeAttribute at) headers
+           else 
+             attributes 
+             |> List.map (fun attribute ->
+                 match attribute with
+                 | AstSeRenamed(x, new_name) ->
+                   ("", new_name), attribute
+                 | AstSeAttribute(at) ->
+                   at, attribute
+                 | AstSeExpr(expr) ->
+                   let new_name = new_uid_expr () |> string_of_int in
+                   ("", new_name), AstSeRenamed(attribute, new_name)
+               )
+             |> List.split
 
       in headers, AstSelect(attributes, tables, selector)
 
@@ -142,15 +156,15 @@ let rename_tables query =
        match query with
        | AstSelect (attributes, relations, where) ->
          let env' = env in
-         let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid)previous ) env' relations in
+         let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid) previous) env' relations in
          let relations = List.map (fun (rel, c) ->
              (match rel with
               | AstSubQuery q -> AstSubQuery(ren_query env q)
               | _ -> rel
              ), Env.find c env''
            ) relations
-         in let attributes = List.map (fun (x, b) -> 
-             ren_attribute env'' x, b
+         in let attributes = List.map (fun attribute ->
+             ren_attribute_select env'' attribute
            ) attributes
          in let where = Utils.option_map (ren_cond env'') where
          in AstSelect(attributes, relations, where)
@@ -158,6 +172,15 @@ let rename_tables query =
          AstUnion(ren_query env a, ren_query env b)
        | AstMinus(a, b) ->
          AstMinus(ren_query env a, ren_query env b)
+
+  and ren_attribute_select env attribute =
+    match attribute with
+    | AstSeRenamed(x, a) ->
+      AstSeRenamed(ren_attribute_select env x, a)
+    | AstSeAttribute (a, b) ->
+      AstSeAttribute (ren_attribute env (a, b))
+    | AstSeExpr(expr) ->
+      AstSeExpr(ren_expr env expr)
 
   and ren_cond env cond = 
     match cond with

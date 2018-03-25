@@ -107,7 +107,7 @@ let graphviz_instrs_of_algebra alg =
       let _ = incr uid in
       !uid, a_str 
             @ [Printf.sprintf node !uid "rename" u;
-               Printf.sprintf edge_label !uid a_lbl (String.concat ", " (List.map (fun (a, b) -> string_of_header a ^ "=" ^ string_of_header b) rename))]
+               Printf.sprintf edge_label !uid a_lbl (String.concat ", " (List.map (fun (a, b) -> string_of_header a ^ "->" ^ string_of_header b) rename))]
 
 
   in conv_alg alg
