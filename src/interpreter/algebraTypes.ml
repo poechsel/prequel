@@ -23,6 +23,7 @@ type algebra =
   | AlgProduct of uid * algebra * algebra
   | AlgSelect of uid * algebra * expression
   | AlgRename of uid * algebra * (header * header) list
+  | AlgAddColumn of uid * algebra * expression * string
 [@@deriving show]
 
 type feed_result = string array

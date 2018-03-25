@@ -64,6 +64,10 @@ let push_down_select query =
         let i, a' = analyze_sub a in
         i, AlgRename(u, a', name)
 
+      | AlgAddColumn(u, a, expr, name) ->
+        let i, a' = analyze_sub a in
+        i, AlgAddColumn(u, a', expr, name)
+
       | AlgSelect(u, a, filter) ->
         let attrs = attributes_of_condition filter |> SetAttributes.of_list in
         let a' = push_down ((filter, attrs) :: can_be_pushed) a in
@@ -100,6 +104,8 @@ let rec select_compressor alg =
     AlgProjection(u, select_compressor a, b)
   | AlgSelect(u, a, b) ->
     AlgSelect(u, select_compressor a, b)
+  | AlgAddColumn(u, a, b, c) ->
+    AlgAddColumn(u, select_compressor a, b, c)
   | AlgInput(u, str) ->
     AlgInput(u, str)
 
@@ -144,6 +150,8 @@ let create_joins alg =
       AlgUnion(u, visitor a, visitor b)
     | AlgProduct(u, a, b) ->
       AlgProduct(u, visitor a, visitor b)
+    | AlgAddColumn(u, a, b, c) ->
+      AlgAddColumn(u, visitor a, b, c)
     | AlgJoin(u, (a, ea), (b, eb)) ->
       AlgJoin(u, (visitor a, ea), (visitor b, eb))
     | x -> x

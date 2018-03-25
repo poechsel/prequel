@@ -66,20 +66,29 @@ let compile query =
     | AstSelect(attributes, tables, cond) ->
       let product_terms = List.map compile_relation_renamed tables in
       let layer = compile_where_clause product_terms cond in
+      let add_columns =
+           attributes 
+           |> Utils.list_filter_and_map (fun attribute ->
+               match attribute with
+               | AstSeRenamed(AstSeExpr(expr), name) ->
+                 Some (expr, name)
+               | _ -> None
+             )
+      in 
+      let layer = 
+        List.fold_left (fun previous (expr, n) ->
+            AlgAddColumn(new_uid (), layer, alg_expr_of_ast_expr expr, n)
+          ) layer add_columns
+      in 
       let renaming = 
         attributes 
-        |> List.filter (fun attribute ->
-            match attribute with
-            | AstSeRenamed _ -> true
-            | _ -> false
-          )
-        |> List.map (fun attribute ->
+        |> Utils.list_filter_and_map (fun attribute ->
             match attribute with
             | AstSeRenamed(AstSeRenamed(_, previous), next) ->
-              ("", previous), ("", next)
+              Some (("", previous), ("", next))
             | AstSeRenamed(AstSeAttribute(previous), next) ->
-              previous, ("", next)
-            | _ -> failwith "incorrect error"
+              Some (previous, ("", next))
+            | _ -> None
           )
       in let layer = 
            if List.length renaming = 0 then 

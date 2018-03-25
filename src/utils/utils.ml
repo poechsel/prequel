@@ -8,6 +8,21 @@ let rec find_first f l =
   | x::tl -> find_first f tl
 
 
+let list_filter_and_map fct l = 
+  let rec aux l acc = 
+    match l with
+    | [] -> List.rev acc
+    | x::tl -> 
+      begin
+        match fct x with
+        | None -> aux tl acc
+        | Some x -> aux tl (x::acc)
+      end
+  in aux l []
+
+    
+
+
 let array_find el ar =
   let rec aux i = 
     if i = Array.length ar then

@@ -86,6 +86,13 @@ let graphviz_instrs_of_algebra alg =
       let _ = incr uid in
       !uid, [Printf.sprintf node !uid name u]
 
+    | AlgAddColumn(u, a, expr, name) ->
+      let a_lbl, a_str = conv_alg a in
+      let _ = incr uid in
+      !uid, a_str 
+            @ [Printf.sprintf node !uid "selection" u;
+               Printf.sprintf edge_label !uid a_lbl (name ^ "<-" ^ string_of_alg_expr expr)]
+
     | AlgProjection(u, a, headers) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in

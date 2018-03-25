@@ -9,6 +9,7 @@ let get_uid_from_alg a =
   | AlgProduct(u, _, _)
   | AlgJoin(u, _, _)
   | AlgSelect(u, _, _)
+  | AlgAddColumn(u, _, _, _)
   | AlgRename(u, _, _) ->
     u
 
@@ -35,6 +36,8 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       let h = get_headers ~f:f a in
       let tbl = Rename.build_rename_map b h in
       Rename.get_headers tbl h
+    | AlgAddColumn(_, a, _, n) ->
+      AddColumn.get_headers (get_headers ~f:f a) n
   in 
   let _ = f (get_uid_from_alg query) res in
   res
@@ -70,6 +73,8 @@ let rec feed_from_query (query : algebra) : feed_interface =
        *)
       (* fastest for small tables *)
     new Join.joinHash (sub_a, eval_a) (sub_b, eval_b)
+  | AlgAddColumn(_, a, expr, n) ->
+    new AddColumn.addColumn (feed_from_query a) (Arithmetics.compile_value (get_headers a) expr) n
   | AlgProduct(_, a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRename(_, a, b) ->

@@ -10,6 +10,9 @@
 %token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
+%left MINUS ADD DIV MULT
+%nonassoc UMINUS 
+
 %start main
 %type<Command.t> main
 %%
@@ -93,6 +96,7 @@ comp:
 
 /* Expressions */
 add_expression:
+    | SUB add_expression %prec UMINUS       { AstExprOp(Sub, AstAtom (Number 0), $2) }
     | mult_expression ADD add_expression    { AstExprOp(Add, $1, $3) }
     | mult_expression SUB add_expression    { AstExprOp(Sub, $1, $3) }
     | mult_expression                       { $1 }
