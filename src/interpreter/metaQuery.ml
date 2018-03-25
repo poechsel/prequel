@@ -77,6 +77,11 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRename(_, a, b) ->
     new Rename.rename (feed_from_query a) (b)
-  | AlgOrder(_, a, criterion) -> 
-    new ExternalSort.sort (feed_from_query a) criterion
+  | AlgOrder(_, a, criterion) ->
+    let headers = get_headers a in
+    let sub = feed_from_query a in
+    let compiled = Array.map
+      (fun (v, ord) -> (Arithmetics.compile_value headers v, ord))
+      criterion in
+    new ExternalSort.sort sub compiled
 

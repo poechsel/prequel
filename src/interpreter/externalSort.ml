@@ -198,15 +198,13 @@ let external_sort feed headers keys =
 
 class sort
   (sub: AlgebraTypes.feed_interface)
-  (keys : (AlgebraTypes.expression * Ast.ordering) array) =
+  (keys : ((AlgebraTypes.feed_result -> Ast.atom) * Ast.ordering) array) =
   object(self)
     inherit AlgebraTypes.feed_interface
 
     val mutable initialized = false
     val mutable cache = []
-    val keys = 
-      let h = sub#headers in 
-      Array.map (fun (v, ord) -> (Arithmetics.compile_value h v, ord)) keys
+    val keys = keys
     val mutable sub = sub
     
     method next = 
