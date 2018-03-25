@@ -28,22 +28,31 @@ let ordered_compare
   (a : 'a array)
   (b : 'a array) : int =
 
-  let cmp x y = function
-    | Ast.Asc  -> (Pervasives.compare x y)
-    | Ast.Desc -> (Pervasives.compare x y) * (-1) in
+  let la = Array.length a in
+  let lb = Array.length b in
 
-  let len = Array.length a in
-  let rec aux i =
-    if i >= len then
-      0
-    else
-      let c = cmp a.(i) b.(i) (snd keys.(i)) in
-      if c <> 0 then 
-        c
-      else 
-        aux (i + 1)
-  in aux 0
+  if la = 0 && lb = 0 then
+    0
+  else if lb = 0 then
+    1
+  else if la = 0 then
+    -1
+  else begin
+    let cmp x y = function
+      | Ast.Asc  -> (Pervasives.compare x y)
+      | Ast.Desc -> (Pervasives.compare x y) * (-1) in
 
+    let rec aux i =
+      if i >= la then
+        0
+      else
+        let c = cmp a.(i) b.(i) (snd keys.(i)) in
+        if c <> 0 then
+          c
+        else
+          aux (i + 1)
+    in aux 0
+  end
 
 let to_file headers file offset buffer=
   let channel = open_out_bin file in
