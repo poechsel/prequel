@@ -37,7 +37,7 @@ type mode =
 
 
 let mode_of_line s =
-  match String.lowercase s with
+  match String.lowercase_ascii s with
     | "[normal]"  -> Normal
     | "[ordered]" -> Ordered
     | "[exact]"   -> Exact

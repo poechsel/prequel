@@ -1,9 +1,9 @@
 all:
-	ocamlbuild -use-ocamlfind -yaccflag -v -package str -package csv -package ppx_deriving.std -package fpath -lib unix -cflag -unsafe src/main.native; 
+	ocamlbuild -use-ocamlfind -v -package str -package csv -package ppx_deriving.std -package fpath -lib unix -cflag -unsafe src/main.native; 
 byte:
-	ocamlbuild -yaccflag -v -package csv src/main.byte
+	ocamlbuild -use-ocamlfind -v -package csv src/main.byte
 test:
-	ocamlbuild -package oUnit -package csv -Is src/ tests/tests.byte -r ;
+	ocamlbuild -use-ocamlfind -package oUnit -package ppx_deriving.std -package fpath -package csv -Is src/ tests/tests.byte -r ;
 	./tests.byte
 clean:
 	ocamlbuild -clean
