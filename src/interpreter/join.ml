@@ -2,6 +2,9 @@ let get_headers h_a h_b =
   Array.append h_a h_b
 
 
+(* return all elements of the list `elements` evaluating 
+   to the value `target_value`.
+   As it uses binary search, the input must be sorted *)
 let find_all_elements elements target_value evaluator = 
   let rec binary_search low high =
     if low <= high then
@@ -41,6 +44,9 @@ let find_all_elements elements target_value evaluator =
 class joinSorted 
     ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
     ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
+  (* join operations. b MUST BE SORTED.
+     Complexity O(|a| log (|b|) + |b| log(|b|) if their is no redundancies)
+     *)
   object(self)
     inherit AlgebraTypes.feed_interface
 
@@ -92,6 +98,9 @@ class joinSorted
 class joinHash (
     (a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
     ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
+  (* join operation using a hashtbl. 
+     Works if the table fits in memory.
+     Complexity: O(|a|+|b|) if their is no redundancies*)
   object(self)
     inherit AlgebraTypes.feed_interface
 
