@@ -23,9 +23,6 @@ module Env = struct
     match headers, line with
     | [], _ | _, [] -> []
     | h::tl, h'::tl' -> (h, h') :: make tl tl'
-
-
-
 end 
 
 let comp a b =
