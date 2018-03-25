@@ -52,6 +52,9 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> ignore;
 
     if debug then
+      print_endline "Terme relationnel :";
+      print_endline @@ AlgebraTypes.show_algebra algebra;
+
       Printf.sprintf
         "xdg-open %s"
         name'

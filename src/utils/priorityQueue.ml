@@ -58,8 +58,8 @@ let pop heap =
   let _ = down_heap heap 0 in
   e
 
-let dump heap = 
+(* let dump heap = 
   for i = 0 to heap.size - 1 do
     Printf.printf "%d  " (let Ast.Number(x) :: _, _ = heap.data.(i) in x)
   done ;
-  Printf.printf "\n"
+  Printf.printf "\n" *)

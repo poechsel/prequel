@@ -43,7 +43,7 @@ let check_coherence query =
       let b_h, b' = c_qu b in
       Headers.union a_h b_h, AstUnion(a', b')
 
-    | AstSelect(attributes, tables, selector) ->
+    | AstSelect(attributes, tables, selector, order, group, having) ->
       let headers_tables, tables = 
         let headers, tables = tables
                               |> List.map (check_relation headers)
@@ -69,8 +69,14 @@ let check_coherence query =
                    ("", new_name), AstSeRenamed(attribute, new_name)
                )
              |> List.split
-
-      in headers, AstSelect(attributes, tables, selector)
+      in let order = 
+           order
+           |> Utils.option_map (List.map (fun (x, y) -> (check_expr headers x, y)))
+      in let group = 
+           group
+           |> Utils.option_map (List.map (check_expr headers))
+      in let having = Utils.option_map (check_cond headers) having
+      in headers, AstSelect(attributes, tables, selector, order, group, having)
 
   and check_relation headers relation = 
     let headers, ast =
@@ -189,7 +195,7 @@ let rename_tables query =
       (m, a)
   in let rec ren_query env query = 
        match query with
-       | AstSelect (attributes, relations, where) ->
+       | AstSelect (attributes, relations, where, order, group, having) ->
          let env' = env in
          let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid) previous) env' relations in
          let relations = List.map (fun (rel, c) ->
@@ -202,7 +208,10 @@ let rename_tables query =
              ren_attribute_select env'' attribute
            ) attributes
          in let where = Utils.option_map (ren_cond env'') where
-         in AstSelect(attributes, relations, where)
+         in let order = match order with
+          | None   -> None
+          | Some l -> Some (List.map (fun (expr, ord) -> (ren_expr env'' expr, ord)) l)
+         in AstSelect(attributes, relations, where, order, group, having)
        | AstUnion(a, b) ->
          AstUnion(ren_query env a, ren_query env b)
        | AstMinus(a, b) ->

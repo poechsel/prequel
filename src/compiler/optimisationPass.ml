@@ -76,6 +76,10 @@ let push_down_select query =
       | AlgInput(u, str) ->
         can_be_pushed, query
 
+      | AlgOrder(u, a, criterion) ->
+        let i, a' = analyze_sub a in
+        i, AlgOrder(u, a', criterion)
+
     in List.fold_left (fun a (cond, _) -> AlgSelect(AlgebraTypes.new_uid (), a, cond))
          req
          to_insert
@@ -108,6 +112,8 @@ let rec select_compressor alg =
     AlgAddColumn(u, select_compressor a, b, c)
   | AlgInput(u, str) ->
     AlgInput(u, str)
+  | AlgOrder(u, a, criterion) ->
+    AlgOrder(u, select_compressor a, criterion)
 
 (* deduce joins *)
 let create_joins alg = 

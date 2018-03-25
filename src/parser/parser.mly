@@ -6,8 +6,8 @@
 %token <string> ID
 %token <string> STRING
 %token <int> NUMBER
-%token SELECT WHERE GROUP BY FROM ORDER UNION MINUS
-%token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
+%token SELECT WHERE HAVING GROUP BY FROM ORDER UNION MINUS
+%token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA ASC DESC
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
 %left MINUS ADD DIV MULT
@@ -28,15 +28,6 @@ main:
   | query EOF     { Query ($1) }
 
 
-/* Attributes */
-attributes:
-    | TIMES           { [] }
-    | attributes_list { $1 }
-
-attributes_list:
-    | attribute_select_ren                      { [$1] }
-    | attribute_select_ren COMA attributes_list { $1 :: $3 }
-
 attribute_select_ren:
     | attribute_select       { $1 }
     | attribute_select ID { AstSeRenamed ($1, $2) }
@@ -46,8 +37,6 @@ attribute_select:
     | add_expression        { match $1 with
                                 | AstAtom(Attribute x) -> AstSeAttribute x
                                 | x -> AstSeExpr x}
-
-
 
 attribute:
     | ID PUNKT ID     { $1, $3 }
@@ -62,10 +51,6 @@ relation:
 relation_atom:
     | STRING                      { AstTable $1 }
     | LPAR query RPAR             { AstSubQuery $2 }
-
-relation_list:
-    | relation                    { [$1] }
-    | relation COMA relation_list { $1 :: $3 }
 
 
 /* Conditions */
@@ -116,11 +101,32 @@ atom:
 
 
 /* Queries */
+select:
+  | SELECT TIMES { [] }
+  | SELECT separated_list(COMA, attribute_select_ren) { $2 } 
+from:
+  | FROM separated_list(COMA, relation) { $2 }
+where:
+  | WHERE condition { $2 }
+order_criteria:
+  | add_expression      { ($1, Asc) }
+  | add_expression ASC  { ($1, Asc) }
+  | add_expression DESC { ($1, Desc) }
+order:
+  | ORDER BY separated_list(COMA, order_criteria) { $3 }
+group:
+  | GROUP BY separated_list(COMA, add_expression) { $3 }
+having:
+  | HAVING condition { $2 }
+
 query:
-    | SELECT attributes FROM relation_list WHERE condition
-        { AstSelect($2, $4, Some $6) }
-    | SELECT attributes FROM relation_list
-        { AstSelect($2, $4, None) }
+    | s = select
+      f = from
+      w = option(where)
+      o = option(order)
+      g = option(group)
+      h = option(having)
+        { AstSelect(s, f, w, o, g, h) }
     | LPAR query RPAR MINUS LPAR query RPAR
         { AstMinus($2, $6) }
     | LPAR query RPAR UNION LPAR query RPAR

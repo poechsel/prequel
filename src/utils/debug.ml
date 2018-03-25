@@ -116,6 +116,13 @@ let graphviz_instrs_of_algebra alg =
             @ [Printf.sprintf node !uid "rename" u;
                Printf.sprintf edge_label !uid a_lbl (String.concat ", " (List.map (fun (a, b) -> string_of_header a ^ "->" ^ string_of_header b) rename))]
 
+    | AlgOrder (u, a, criterion) ->
+      let a_lbl, a_str = conv_alg a in
+      let _ = incr uid in
+      !uid, a_str 
+            @ [Printf.sprintf node !uid "order" u;
+               Printf.sprintf edge_label !uid a_lbl "(TODO)"]
+
 
   in conv_alg alg
 

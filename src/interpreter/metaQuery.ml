@@ -10,7 +10,8 @@ let get_uid_from_alg a =
   | AlgJoin(u, _, _)
   | AlgSelect(u, _, _)
   | AlgAddColumn(u, _, _, _)
-  | AlgRename(u, _, _) ->
+  | AlgRename(u, _, _)
+  | AlgOrder(u, _, _) ->
     u
 
 
@@ -38,6 +39,8 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       Rename.get_headers tbl h
     | AlgAddColumn(_, a, _, n) ->
       AddColumn.get_headers (get_headers ~f:f a) n
+    | AlgOrder(_, a, criterion) ->
+      Select.get_headers (get_headers ~f:f a)
   in 
   let _ = f (get_uid_from_alg query) res in
   res
@@ -79,4 +82,11 @@ let rec feed_from_query (query : algebra) : feed_interface =
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRename(_, a, b) ->
     new Rename.rename (feed_from_query a) (b)
+  | AlgOrder(_, a, criterion) ->
+    let headers = get_headers a in
+    let sub = feed_from_query a in
+    let compiled = Array.map
+      (fun (v, ord) -> (Arithmetics.compile_value headers v, ord))
+      criterion in
+    new ExternalSort.sort sub compiled
 

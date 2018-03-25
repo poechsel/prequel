@@ -3,7 +3,7 @@ type attribute = string * string
 type attribute_renamed = attribute * string option
 [@@deriving show]
 
-type binop = 
+type binop =
   | And
   | Or
   | Leq
@@ -16,6 +16,11 @@ type binop =
   | Sub
   | Div
   | Times
+[@@deriving show]
+
+type ordering =
+  | Asc
+  | Desc
 [@@deriving show]
 
 type atom =
@@ -43,7 +48,13 @@ type ('a, 'b) relation =
 [@@deriving show]
 
 and ('a, 'b) query =
-  | AstSelect of attribute_select list * (('a, 'b) relation * string) list * 'a option
+  | AstSelect of
+      attribute_select list * 
+      (('a, 'b) relation * string) list *
+      'a option *
+      ((expression * ordering) list) option *
+      (expression list) option *
+      'a option
   | AstMinus of ('a, 'b) query * ('a, 'b) query
   | AstUnion of ('a, 'b) query * ('a, 'b) query
 [@@deriving show]
