@@ -1,6 +1,13 @@
 let array_concat s a = 
   String.concat s (Array.to_list a)
 
+let rec find_first f l =
+  match l with
+  | [] -> None
+  | x::tl when f x -> Some x
+  | x::tl -> find_first f tl
+
+
 let array_find el ar =
   let rec aux i = 
     if i = Array.length ar then

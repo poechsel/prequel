@@ -60,7 +60,6 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
   end;
 
   let feed = MetaQuery.feed_from_query algebra in
-  let _ = print_string "=================\n" in
   if pretty then
     feed#print
   else begin

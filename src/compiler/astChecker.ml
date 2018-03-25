@@ -52,6 +52,7 @@ let check_coherence query =
          , tables
       in let headers = Headers.join headers_tables headers
       in let selector = Utils.option_map (check_cond headers) selector
+      in let attributes = List.map (check_select_attribute headers) attributes
       in let headers, attributes = 
            if attributes = [] then 
              headers, List.map (fun at -> AstSeAttribute at) headers
@@ -120,14 +121,48 @@ let check_coherence query =
     | AstAtom(atom) ->
       AstAtom(check_atom headers atom)
 
+  and check_select_attribute headers attribute = 
+    match attribute with
+    | AstSeAttribute (table, at) ->
+      let real =  
+        headers 
+        |> Utils.find_first (fun (x, y) -> 
+            if table = "" then 
+              y = at 
+            else 
+              (x = table) && (y = at)
+          )
+      in begin
+        match real  with
+        | None ->
+          raise (Errors.SemanticError (""))
+        | Some x ->
+          AstSeAttribute x
+      end 
+    | AstSeRenamed(s, n) ->
+      AstSeRenamed(check_select_attribute headers s, n)
+    | AstSeExpr(expr) ->
+      AstSeExpr(check_expr headers expr)
+        
+
   and check_atom headers atom =
     match atom with
-    | Attribute attr ->
-      let _ = if not @@ List.exists (fun x -> attr = x) headers then
+    | Attribute (table, at) ->
+      let real =  
+        headers 
+        |> Utils.find_first (fun (x, y) -> 
+            if table = "" then 
+              y = at 
+            else 
+              (x = table) && (y = at)
+          )
+      in begin
+        match real  with
+        | None ->
           raise (Errors.SemanticError (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_atom atom)))
-      in 
-      (* send error *)
-      Attribute attr
+        | Some x ->
+          Attribute x
+      end 
     | x -> x
 
 
