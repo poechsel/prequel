@@ -71,6 +71,17 @@ let graphviz_instrs_of_algebra alg =
                Printf.sprintf edge !uid a_lbl;
                Printf.sprintf edge !uid b_lbl]
 
+    | AlgJoin(u, (a, ea), (b, eb)) ->
+      let a_lbl, a_str = conv_alg a in
+      let b_lbl, b_str = conv_alg b in
+      let _ = incr uid in
+      !uid, a_str 
+            @ b_str 
+            @ [Printf.sprintf node !uid "join" u;
+               Printf.sprintf edge_label !uid a_lbl (string_of_alg_expr ea);
+               Printf.sprintf edge_label !uid b_lbl (string_of_alg_expr eb)]
+
+
     | AlgInput(u, name) ->
       let _ = incr uid in
       !uid, [Printf.sprintf node !uid name u]

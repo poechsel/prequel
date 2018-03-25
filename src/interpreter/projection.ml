@@ -1,6 +1,6 @@
 (* keep must be a int array *)
 let get_headers keep h = 
-  Array.init (Array.length keep) (fun i -> h.(i))
+  Array.init (Array.length keep) (fun i -> h.(keep.(i)))
 
 
 

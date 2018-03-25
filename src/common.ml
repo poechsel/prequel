@@ -29,7 +29,11 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> AstChecker.check_coherence
     |> AstChecker.rename_tables
     |> AstTransformers.disjunction
-    |> Compiler.compile in
+    |> Compiler.compile 
+    |> OptimisationPass.push_down_select
+    |> OptimisationPass.create_joins
+    |> OptimisationPass.select_compressor
+  in
 
   (* In debug mode, display a graph of the algebra term. *)
   if debug || graph <> None then begin
