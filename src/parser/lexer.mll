@@ -35,6 +35,7 @@ rule token = parse
     match String.lowercase s with
     | "select"  -> SELECT
     | "where"   -> WHERE
+    | "having"  -> HAVING
     | "from"    -> FROM
     | "group"   -> GROUP
     | "minus"   -> MINUS

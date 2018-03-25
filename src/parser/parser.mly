@@ -6,7 +6,7 @@
 %token <string> ID
 %token <string> STRING
 %token <int> NUMBER
-%token SELECT WHERE GROUP BY FROM ORDER UNION MINUS
+%token SELECT WHERE HAVING GROUP BY FROM ORDER UNION MINUS
 %token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA 
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
 
@@ -26,14 +26,6 @@ main:
 
 
 /* Attributes */
-attributes:
-    | TIMES           { [] }
-    | attributes_list { $1 }
-
-attributes_list:
-    | attribute_renamed                      { [$1] }
-    | attribute_renamed COMA attributes_list { $1 :: $3 }
-
 attribute_renamed:
     | attribute AS ID { $1, Some $3 }
     | attribute       { $1, None }
@@ -51,10 +43,6 @@ relation:
 relation_atom:
     | STRING                      { AstTable $1 }
     | LPAR query RPAR             { AstSubQuery $2 }
-
-relation_list:
-    | relation                    { [$1] }
-    | relation COMA relation_list { $1 :: $3 }
 
 
 /* Conditions */
@@ -104,11 +92,28 @@ atom:
 
 
 /* Queries */
+select:
+  | SELECT TIMES { [] }
+  | SELECT separated_list(COMA, attribute_renamed) { $2 } 
+from:
+  | FROM separated_list(COMA, relation) { $2 }
+where:
+  | WHERE condition { $2 }
+order:
+  | ORDER BY separated_list(COMA, add_expression) { $3 }
+group:
+  | GROUP BY separated_list(COMA, add_expression) { $3 }
+having:
+  | HAVING condition { $2 }
+
 query:
-    | SELECT attributes FROM relation_list WHERE condition
-        { AstSelect($2, $4, Some $6) }
-    | SELECT attributes FROM relation_list
-        { AstSelect($2, $4, None) }
+    | s = select
+      f = from
+      w = option(where)
+      o = option(order)
+      g = option(group)
+      h = option(having)
+        { AstSelect(s, f, w, o, g, h) }
     | LPAR query RPAR MINUS LPAR query RPAR
         { AstMinus($2, $6) }
     | LPAR query RPAR UNION LPAR query RPAR

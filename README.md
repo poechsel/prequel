@@ -16,6 +16,7 @@ This project depends on a few packages, which can be installed using [OPAM](http
 ```
 opam install ocamlbuild
 opam install ppx_deriving
+opam install menhir
 opam install fpath
 opam install csv
 ```

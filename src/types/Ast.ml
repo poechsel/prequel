@@ -36,7 +36,13 @@ type ('a, 'b) relation =
 [@@deriving show]
 
 and ('a, 'b) query =
-  | AstSelect of attribute_renamed list * (('a, 'b) relation * string) list * 'a option
+  | AstSelect of
+      attribute_renamed list * 
+      (('a, 'b) relation * string) list *
+      'a option *
+      (expression list) option *
+      (expression list) option *
+      'a option
   | AstMinus of ('a, 'b) query * ('a, 'b) query
   | AstUnion of ('a, 'b) query * ('a, 'b) query
 [@@deriving show]
