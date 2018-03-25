@@ -153,6 +153,9 @@ let rename_tables query =
              ren_attribute env'' x, b
            ) attributes
          in let where = Utils.option_map (ren_cond env'') where
+         in let order = match order with
+          | None   -> None
+          | Some l -> Some (List.map (fun (expr, ord) -> (ren_expr env'' expr, ord)) l)
          in AstSelect(attributes, relations, where, order, group, having)
        | AstUnion(a, b) ->
          AstUnion(ren_query env a, ren_query env b)
