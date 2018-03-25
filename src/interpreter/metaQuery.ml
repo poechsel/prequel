@@ -63,8 +63,13 @@ let rec feed_from_query (query : algebra) : feed_interface =
     let eval_a = Arithmetics.compile_value (get_headers a) expr_a in
     let sub_b = feed_from_query b in
     let eval_b = Arithmetics.compile_value (get_headers b) expr_b in
+    (* WE MUST SORT the right hand side *)
     let sub_b = new ExternalSort.sort sub_b [|expr_b|] in
-    new Join.join (sub_a, eval_a) (sub_b, eval_b)
+    new Join.joinSorted (sub_a, eval_a) (sub_b, eval_b)
+      (*
+      (* fastest for small tables *)
+    new Join.joinHash (sub_a, eval_a) (sub_b, eval_b)
+         *)
   | AlgProduct(_, a, b) ->
     new Product.product (feed_from_query a) (feed_from_query b)
   | AlgRename(_, a, b) ->

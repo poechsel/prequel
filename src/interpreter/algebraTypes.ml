@@ -40,6 +40,16 @@ class virtual feed_interface =
           aux (x::acc)
       in aux []
 
+    method iterate (fct : string array -> unit) : unit =
+      let rec aux () = 
+        match self#next with
+        | None -> 
+          ()
+        | Some x ->
+          fct x;
+          aux ()
+      in aux ()
+
     method save (channel : out_channel) : unit =
       let rec aux () = 
         match self#next with

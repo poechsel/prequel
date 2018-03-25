@@ -38,8 +38,9 @@ let find_all_elements elements target_value evaluator =
     in Some (aux start_section [])
 
 
-class join ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
-           ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
+class joinSorted 
+    ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
+    ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
   object(self)
     inherit AlgebraTypes.feed_interface
 
@@ -86,3 +87,62 @@ class join ((a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result
     method headers =
       get_headers left#headers right#headers
   end 
+
+
+class joinHash (
+    (a : AlgebraTypes.feed_interface), (expr_a: AlgebraTypes.feed_result -> Ast.atom)) 
+    ((b : AlgebraTypes.feed_interface), (expr_b: AlgebraTypes.feed_result -> Ast.atom)) =
+  object(self)
+    inherit AlgebraTypes.feed_interface
+
+    val left = a
+    val right = b
+    val left_expr = expr_a
+    val right_expr = expr_b
+    val tbl = Hashtbl.create 100
+    val mutable current = None
+    val mutable current_row = []
+    val mutable initialized = false
+
+    method next =
+      let _ = if (not initialized) then
+          let _  = initialized <- true in
+          let _ = right#iterate (fun line ->
+              let value = right_expr line in
+              if Hashtbl.mem tbl value then
+                let t = Hashtbl.find tbl value in
+                t := line :: !t
+              else 
+                Hashtbl.add tbl value (ref [line])
+            )
+          in ()
+      in
+      match current_row with
+        | [] -> 
+          current <- left#next;
+          begin match current with 
+            | None -> None
+            | Some x -> 
+              let value = left_expr x in
+              let _ = current_row <- 
+                  if Hashtbl.mem tbl value then
+                    !(Hashtbl.find tbl value)
+                  else 
+                    []
+              in 
+              self#next
+          end
+        | x::tl -> 
+          current_row <- tl;
+          begin match current with
+            | None -> None
+            | Some y -> Some (Array.append y x)
+          end
+
+    method reset =
+      left#reset
+
+    method headers =
+      get_headers left#headers right#headers
+  end 
+

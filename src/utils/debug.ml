@@ -78,8 +78,8 @@ let graphviz_instrs_of_algebra alg =
       !uid, a_str 
             @ b_str 
             @ [Printf.sprintf node !uid "join" u;
-               Printf.sprintf edge !uid a_lbl;
-               Printf.sprintf edge !uid b_lbl]
+               Printf.sprintf edge_label !uid a_lbl (string_of_alg_expr ea);
+               Printf.sprintf edge_label !uid b_lbl (string_of_alg_expr eb)]
 
 
     | AlgInput(u, name) ->

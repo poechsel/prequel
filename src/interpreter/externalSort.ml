@@ -58,6 +58,8 @@ let rec initialize_sort ?(size_chunk=(1 lsl 18)) headers keys feed =
           buffer.(i) <- ([||], [||])
         done in
       let _ = sort headers keys in
+      (* if the result fits in one chunk, then we keep it in ram without writing
+         it to disk*)
       if filelist = [] then
         InRam (Array.map snd buffer, (size_chunk - current_size))
       else 
