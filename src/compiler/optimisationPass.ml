@@ -80,7 +80,7 @@ let push_down_select query =
         let i, a' = analyze_sub a in
         i, AlgOrder(u, a', criterion)
 
-    in List.fold_left (fun a (cond, _) -> AlgSelect(AlgebraTypes.new_uid (), a, cond))
+    in List.fold_left (fun a (cond, _) -> AlgSelect(new_uid (), a, cond))
          req
          to_insert
   in push_down [] query
@@ -93,7 +93,7 @@ let push_down_select query =
 let rec select_compressor alg =
   match alg with 
   | AlgSelect(_, AlgSelect(_, sub, e1), e2) ->
-    select_compressor (AlgSelect(AlgebraTypes.new_uid(), sub, AlgBinOp(Ast.And, e2, e1)))
+    select_compressor (AlgSelect(new_uid(), sub, AlgBinOp(Ast.And, e2, e1)))
   | AlgUnion(u, a, b) ->
     AlgUnion(u, (select_compressor a), (select_compressor b))
   | AlgMinus(u, a, b) ->
@@ -198,7 +198,7 @@ let rec delete_projections alg =
 let optimize_projections alg = 
   let insert_projection headers headers_before sub =
       if SetAttributes.cardinal headers <> SetAttributes.cardinal headers_before then
-        AlgProjection(AlgebraTypes.new_uid ()
+        AlgProjection(new_uid ()
                      , sub
                      , SetAttributes.elements headers |> Array.of_list)
       else 
@@ -207,9 +207,19 @@ let optimize_projections alg =
   let tbl = Hashtbl.create 10 in
   let get_headers query =
     Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
+    |> Array.to_list
+    |> SetAttributes.of_list 
   in 
 
   let rec visitor headers alg = 
+    (* at this point, we want to be sure that headers is something
+       included all of the headers accessible by the query represented
+       by alg: we do a set intersection operation
+       (we are sure that headers is included in alg_headers *)
+    let headers = 
+      get_headers alg 
+      |> SetAttributes.inter headers
+    in 
     let v = visitor headers in
     match alg with
     | AlgProjection(u, a, b) ->
@@ -314,6 +324,10 @@ let optimize_projections alg =
      of the execution. It will serve as the 
      root of our traversal *)
   let headers = MetaQuery.get_headers alg
+
+  (* we use sets in order to speed up computations *)
+  in let headers_set = 
+    headers
     |> Array.to_list
     |> SetAttributes.of_list 
   in
@@ -323,4 +337,8 @@ let optimize_projections alg =
      each constructor *)
   let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
   (* finally we insert the projections when needed *)
-  visitor headers alg
+  let alg = visitor headers_set alg in
+  (* unfortunately we've probably lost the order of the last 
+     projection here. To solve this problem we had a last projection
+     which reorder the rows *)
+  AlgProjection(new_uid (), alg, headers)
