@@ -204,7 +204,6 @@ class sort
 
     val mutable initialized = false
     val mutable cache = []
-    val keys = keys
     val mutable sub = sub
     
     method next = 
