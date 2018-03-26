@@ -1,5 +1,6 @@
 open AlgebraTypes
 
+(* computed the 'xor' of two lists *)
 let exclusive_join l1 l2 =
   let rec aux l acc = 
     match l with
@@ -13,30 +14,54 @@ let exclusive_join l1 l2 =
   aux l []
 
 
+(* modules used to represent sets of attributes 
+   (unordered headers in other words).
+   Allows easier set operations *)
 module SetAttributes = Set.Make (struct
     type t = AlgebraTypes.header
     let compare = Pervasives.compare
   end )
 
-let push_down_select query = 
+
+
+
+(* push down select optimizations *)
+let push_down_select alg = 
+  (* first compute all headers of the tree
+     and store them in a hashtbl for faster retrieval *)
   let tbl = Hashtbl.create 10 in
-  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) query in
+  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
   let get_headers query =
     Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
     |> Array.to_list
     |> SetAttributes.of_list 
   in 
-  let rec push_down can_be_pushed query =
-    let analyze_sub query =
-      let header = get_headers query in
+
+  (* the main algorithm 
+     can_be_pushed: expressions of the selections that we want to
+        try and push down in the tree
+     alg : the tree
+  *)
+  let rec push_down can_be_pushed alg =
+    let analyze_sub alg =
+      (* when analyzing a tree rooted by alg we can splits the select 
+         in two parts:
+          - the ones we can push down further (`push`)
+         - the ones we can can't push down anymore (`stay`)
+      *)
+      let header = get_headers alg in
       let push, stay =
         can_be_pushed 
         |> List.partition (fun x -> SetAttributes.subset (snd x) header) 
-      in stay, push_down push query
+      in stay, push_down push alg
     in 
+    (* we get the selectors we can't push down any further
+       and the transformed tree *)
     let to_insert, req = 
-      match query with
+      match alg with
       | AlgUnion(u, a, b) ->
+        (* if x is a selector and can be pushed in
+           a or in b, then we have no need to keep it *)
         let i1, a' = analyze_sub a in 
         let i2, b' = analyze_sub b in
         exclusive_join i1 i2, AlgUnion(u, a', b')
@@ -69,30 +94,37 @@ let push_down_select query =
         i, AlgAddColumn(u, a', expr, name)
 
       | AlgSelect(u, a, filter) ->
+        (* add the selector to the list of selectors,
+          and returned the transformed tree*)
         let attrs = attributes_of_condition filter |> SetAttributes.of_list in
         let a' = push_down ((filter, attrs) :: can_be_pushed) a in
         [], a'
 
       | AlgInput(u, str) ->
-        can_be_pushed, query
+        can_be_pushed, alg
 
       | AlgOrder(u, a, criterion) ->
         let i, a' = analyze_sub a in
         i, AlgOrder(u, a', criterion)
 
+    (* we insert the selectors that can't be pushed down *)
     in List.fold_left (fun a (cond, _) -> AlgSelect(new_uid (), a, cond))
          req
          to_insert
-  in push_down [] query
+  in push_down [] alg
 
 
 
 
-(* SELECT compressor *)
-
+(* SELECT compressor 
+   We compress select(select(..., s1), s2) to select(..., s1 AND s2)
+   *)
 let rec select_compressor alg =
   match alg with 
   | AlgSelect(_, AlgSelect(_, sub, e1), e2) ->
+    (* beware of how we merge two selectors. We want
+       to create something of the form (a AND (b AND (c AND d))) so
+       that lazy evaluation is more efficient *)
     select_compressor (AlgSelect(new_uid(), sub, AlgBinOp(Ast.And, e2, e1)))
   | AlgUnion(u, a, b) ->
     AlgUnion(u, (select_compressor a), (select_compressor b))
@@ -115,7 +147,19 @@ let rec select_compressor alg =
   | AlgOrder(u, a, criterion) ->
     AlgOrder(u, select_compressor a, criterion)
 
-(* deduce joins *)
+
+(* deduce joins operations.
+   We convert patterns of the form
+   SELECT(PRODUCT(a, b), a.foo==b.bar)
+   into a join.
+
+   Why do it both in compilation and in optimisations ?
+   Because this pattern can appear after other optimisations steps.
+   Patterns like this typically appear when compiling IN.
+
+   We still emit some joins during compilations as it
+   allow for more joins to be created
+*)
 let create_joins alg = 
   let tbl = Hashtbl.create 10 in
   let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
@@ -128,6 +172,7 @@ let create_joins alg =
     | AlgSelect(u, AlgProduct(u', lhs_query, rhs_query), (AlgBinOp(Ast.Eq, lhs_expr, rhs_expr) as expr)) ->
       let attrs_lhs_expr = attributes_of_condition lhs_expr in
       let attrs_rhs_expr = attributes_of_condition rhs_expr in
+      (* check if it is indeed a join *)
       if List.length attrs_lhs_expr = 1 && List.length attrs_rhs_expr = 1 
          && fst @@ List.hd attrs_lhs_expr <> fst @@ List.hd attrs_rhs_expr then 
         let a_lhs = List.hd attrs_lhs_expr in
@@ -169,9 +214,11 @@ let create_joins alg =
 
 
 
-(* Projections optimizer *)
+(* Projections optimizer.
+    We try to keep the least amount of rows possible
+*)
 
-
+(* delete all projections from a query *)
 let rec delete_projections alg = 
   match alg with
   | AlgProjection(u, a, b) ->
@@ -195,7 +242,15 @@ let rec delete_projections alg =
   | AlgOrder(u, a, criterion) ->
     AlgOrder(u, delete_projections a, criterion)
 
+
+(* add projections back *)
 let optimize_projections alg = 
+  (* a method to insert projections for a tree `sub` if needed.
+     `headers` is the minimum set of headers that `sub` must return
+     `headers_before` is the set of headers `sub` must take as input.
+     We add a projection if `sub` needs more headers to be executed
+     than headers needed after its executions
+     *)
   let insert_projection headers headers_before sub =
       if SetAttributes.cardinal headers <> SetAttributes.cardinal headers_before then
         AlgProjection(new_uid ()
@@ -204,6 +259,7 @@ let optimize_projections alg =
       else 
         sub
   in 
+  (* a structure for faster lookup of headers *)
   let tbl = Hashtbl.create 10 in
   let get_headers query =
     Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
@@ -220,6 +276,7 @@ let optimize_projections alg =
       get_headers alg 
       |> SetAttributes.inter headers
     in 
+    (* alias to lighten notations *)
     let v = visitor headers in
     match alg with
     | AlgProjection(u, a, b) ->
@@ -255,6 +312,8 @@ let optimize_projections alg =
         headers_before
         sub
     | AlgSelect(u, a, expr) ->
+      (* take into account that `expr` might
+         need headers not needed before *)
       let headers_before =
         attributes_of_condition expr
         |> SetAttributes.of_list
