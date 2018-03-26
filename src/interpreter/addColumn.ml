@@ -15,8 +15,9 @@ class addColumn (sub : AlgebraTypes.feed_interface) (expr : AlgebraTypes.feed_re
       | Some x ->
         let s = 
           match expr x with 
-          | Ast.Number x -> string_of_int x
-          | Ast.String s -> s
+          | Ast.Number x    -> string_of_int x
+          | Ast.String s    -> s
+          | Ast.Attribute _ -> failwith "There shouldn't be an attribute here."
         in 
         Some (Array.append x [|s|])
 
