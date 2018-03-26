@@ -13,6 +13,18 @@ let get_headers tbl h =
         i
     ) h
 
+let inverse_rename rename_list h =
+  h
+  |> List.map (fun attribute ->
+      let s = Utils.find_first 
+          (fun (before, after) -> after = attribute ) 
+          rename_list in
+      match s with
+      | None -> attribute
+      | Some (x, _) -> x
+    )
+
+
 (* renamed is of type (header * header) list 
    For each tuples, the first coordinate is the name of the row to be renamed
    and the second the new name

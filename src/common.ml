@@ -33,6 +33,7 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> OptimisationPass.push_down_select
     |> OptimisationPass.create_joins
     |> OptimisationPass.select_compressor
+    |> OptimisationPass.optimize_projections
   in
 
   (* In debug mode, display a graph of the algebra term. *)
@@ -51,7 +52,7 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> Sys.command
     |> ignore;
 
-    if debug then
+    if debug then begin
       print_endline "Terme relationnel :";
       print_endline @@ AlgebraTypes.show_algebra algebra;
 
@@ -60,6 +61,7 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
         name'
       |> Sys.command
       |> ignore
+    end 
   end;
 
   let feed = MetaQuery.feed_from_query algebra in

@@ -160,26 +160,167 @@ let create_joins alg =
       AlgAddColumn(u, visitor a, b, c)
     | AlgJoin(u, (a, ea), (b, eb)) ->
       AlgJoin(u, (visitor a, ea), (visitor b, eb))
-    | x -> x
+    | AlgOrder(u, a, criterion) ->
+      AlgOrder(u, visitor a, criterion)
+    | AlgInput _ as alg ->
+      alg
   in visitor alg
 
 
 
 
 (* Projections optimizer *)
-      (*
-let insert_projections alg = 
+
+
+let rec delete_projections alg = 
+  match alg with
+  | AlgProjection(u, a, b) ->
+    a
+  | AlgSelect(u, a, b) ->
+    AlgSelect(u, delete_projections a, b)
+  | AlgRename(u, a, b) ->
+    AlgRename(u, delete_projections a, b)
+  | AlgMinus(u, a, b) ->
+    AlgMinus(u, delete_projections a, delete_projections b)
+  | AlgUnion(u, a, b) ->
+    AlgUnion(u, delete_projections a, delete_projections b)
+  | AlgProduct(u, a, b) ->
+    AlgProduct(u, delete_projections a, delete_projections b)
+  | AlgJoin(u, (a, ea), (b, eb)) ->
+    AlgJoin(u, (delete_projections a, ea), (delete_projections b, eb))
+  | AlgInput _ as alg -> 
+    alg
+  | AlgAddColumn(u, a, b, c) ->
+    AlgAddColumn(u, delete_projections a, b, c)
+  | AlgOrder(u, a, criterion) ->
+    AlgOrder(u, delete_projections a, criterion)
+
+let optimize_projections alg = 
+  let insert_projection headers headers_before sub =
+      if SetAttributes.cardinal headers <> SetAttributes.cardinal headers_before then
+        AlgProjection(AlgebraTypes.new_uid ()
+                     , sub
+                     , SetAttributes.elements headers |> Array.of_list)
+      else 
+        sub
+  in 
   let tbl = Hashtbl.create 10 in
-  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
-  let get_headers alg =
-    Hashtbl.find tbl (MetaQuery.get_uid_from_alg alg)
+  let get_headers query =
+    Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
+  in 
+
+  let rec visitor headers alg = 
+    let v = visitor headers in
+    match alg with
+    | AlgProjection(u, a, b) ->
+      AlgProjection(u, v a, b)
+    | AlgMinus(u, a, b) ->
+      AlgMinus(u, v a, v b)
+    | AlgProduct(u, a, b) ->
+      AlgProduct(u, v a, v b)
+    | AlgUnion(u, a, b) ->
+      AlgUnion(u, v a, v b)
+    | AlgRename(u, a, l) ->
+      let headers = 
+        headers
+        |> SetAttributes.elements
+        |> Rename.inverse_rename l
+        |> SetAttributes.of_list
+      in AlgRename(u, visitor headers a, l)
+    | AlgAddColumn(u, a, b, name) ->
+      let headers_before = 
+        (*we do not delete ("", name) here because we would have
+          added it back *)
+        attributes_of_condition b
+        |> SetAttributes.of_list 
+        |> SetAttributes.union headers
+      in
+      (* now we delete it*)
+      let sub = AlgAddColumn(u, 
+                             visitor (SetAttributes.remove ("", name) headers_before) a, 
+                             b, 
+                             name) in
+      insert_projection 
+        headers 
+        headers_before
+        sub
+    | AlgSelect(u, a, expr) ->
+      let headers_before =
+        attributes_of_condition expr
+        |> SetAttributes.of_list
+        |> SetAttributes.union headers
+      in
+      let sub = AlgSelect(u, 
+                          visitor headers_before a, 
+                          expr) in 
+      insert_projection 
+        headers 
+        headers_before
+        sub
+
+    | AlgJoin(u, (a, ea), (b, eb)) ->
+      let headers_ea = 
+        attributes_of_condition ea
+        |> SetAttributes.of_list 
+      in let headers_eb = 
+        attributes_of_condition eb
+        |> SetAttributes.of_list 
+      in let headers_before =
+        SetAttributes.union headers_ea headers_eb
+        |> SetAttributes.union headers
+      in
+      let sub = AlgJoin(u, 
+                        (visitor headers_before a, ea), 
+                        (visitor headers_before b, eb)) in 
+      insert_projection 
+        headers 
+        headers_before
+        sub
+
+    | AlgInput(u, path) ->
+      let headers_before = 
+        InputCachedFile.get_headers path
+        |> Array.to_list
+        |> SetAttributes.of_list 
+        |> SetAttributes.union headers
+      in
+      let sub = AlgInput(u, path)
+      in insert_projection
+        headers
+        headers_before
+        sub
+
+    | AlgOrder(u, a, exprs_array) ->
+      let exprs = 
+        exprs_array
+        |> Array.to_list
+        |> List.map fst
+        |> List.map attributes_of_condition
+        |> List.map SetAttributes.of_list 
+      in let headers_before = 
+           exprs
+           |> Utils.merge_list (SetAttributes.union) 
+           |> SetAttributes.union headers
+      in let sub = AlgOrder(u, 
+                   (visitor headers_before a),
+                   exprs_array)
+      in insert_projection
+        headers
+        headers_before
+        sub
+
+  in
+  (* we get the headers we want at the end
+     of the execution. It will serve as the 
+     root of our traversal *)
+  let headers = MetaQuery.get_headers alg
     |> Array.to_list
     |> SetAttributes.of_list 
-  in 
-  let rec aux alg =
-    let min_header_end = 
-      match alg with
-      | AlgProjection(u, a, b) ->
-
-  in aux alg
-         *)
+  in
+  (* we remove all projections *)
+  let alg = delete_projections alg in
+  (* we compute the headers that are seen on
+     each constructor *)
+  let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
+  (* finally we insert the projections when needed *)
+  visitor headers alg
