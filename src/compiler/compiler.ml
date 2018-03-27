@@ -93,24 +93,6 @@ let compile query =
             AlgAddColumn(new_uid (), layer, alg_expr_of_ast_expr expr, n)
           ) layer add_columns
 
-      (* We rename the columns if needed. *)
-      in let renaming =
-        attributes 
-        |> Utils.list_filter_and_map (fun attribute ->
-            match attribute with
-            | AstSeRenamed(AstSeRenamed(_, previous), next) ->
-              Some (("", previous), ("", next))
-            | AstSeRenamed(AstSeAttribute(previous), next) ->
-              Some (previous, ("", next))
-            | _ -> None
-          )
-
-      in let layer =
-        if List.length renaming = 0 then
-          layer
-        else
-          AlgRename(new_uid(), layer, renaming)
-
       (* If there is a GROUP BY operator, we first sort
          the result using an AlgOrder in ascending order
          for every key of the GROUP BY, and then add an
@@ -150,11 +132,29 @@ let compile query =
               new_uid (),
               layer,
               List.map (fun (expr, order) -> alg_expr_of_ast_expr expr, order) l
-              |> Array.of_list) in
+              |> Array.of_list)
+
+      (* We rename the columns if needed. *)
+      in let renaming =
+        attributes
+        |> Utils.list_filter_and_map (fun attribute ->
+            match attribute with
+            | AstSeRenamed(AstSeRenamed(_, previous), next) ->
+              Some (("", previous), ("", next))
+            | AstSeRenamed(AstSeAttribute(previous), next) ->
+              Some (previous, ("", next))
+            | _ -> None
+          )
+
+      in let layer =
+        if List.length renaming = 0 then
+          layer
+        else
+          AlgRename(new_uid(), layer, renaming)
 
       (* Finally, we use an `AstProject` to restrict the
          output to the attributes from the SELECT clause. *)
-      let project_attributes =
+      in let project_attributes =
         attributes
         |> List.map (fun attribute ->
             match attribute with
