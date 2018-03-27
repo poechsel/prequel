@@ -52,15 +52,14 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> Sys.command
     |> ignore;
 
-    if debug then
-      print_endline "Terme relationnel :";
-      print_endline @@ AlgebraTypes.show_algebra algebra;
+    print_endline "Terme relationnel :";
+    print_endline @@ AlgebraTypes.show_algebra algebra;
 
-      Printf.sprintf
-        "xdg-open %s"
-        name'
-      |> Sys.command
-      |> ignore
+    Printf.sprintf
+      "xdg-open %s"
+      name'
+    |> Sys.command
+    |> ignore
   end;
 
   let feed = MetaQuery.feed_from_query algebra in
