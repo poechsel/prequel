@@ -1,6 +1,14 @@
 open Ast
 open AlgebraTypes
 
+
+let get_headers prev exports =
+  (* For each aggregate that appears in a surrounding SELECT
+     or HAVING clause, add a new column to the result. *)
+  let computed = Array.map (fun (uid, _) -> ("", uid)) exports in
+  Array.append prev computed
+
+
 (** A grouping operator.
 
     `sub`: The source feed.
@@ -96,8 +104,5 @@ class group
       sub#reset
 
     method headers =
-      (* For each aggregate that appears in a surrounding SELECT
-         or HAVING clause, add a new column to the result. *)
-      let computed = Array.map (fun (uid, _) -> ("", uid)) exports in
-      Array.append sub#headers computed
+      get_headers sub#headers exports
   end

@@ -41,6 +41,8 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       AddColumn.get_headers (get_headers ~f:f a) n
     | AlgOrder(_, a, _) ->
       ExternalSort.get_headers (get_headers ~f:f a)
+    | AlgGroup(_, a, _, exports) ->
+      Group.get_headers (get_headers ~f:f a) exports
   in 
   let _ = f (get_uid_from_alg query) res in
   res
