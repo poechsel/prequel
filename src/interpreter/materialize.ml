@@ -28,3 +28,20 @@ class materialize sub name =
     method headers =
       sub#headers
   end
+
+
+
+class unmaterialize headers name =
+  object(self)
+    inherit AlgebraTypes.feed_interface
+    val sub = new InputCachedFile.inputCachedFile name
+
+    method next = 
+      sub#next
+
+    method reset = 
+      sub#reset
+
+    method headers =
+      headers
+  end

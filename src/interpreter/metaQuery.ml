@@ -335,17 +335,9 @@ let feed_from_query (query : algebra) : feed_interface =
           let c = aux query in
           new Materialize.materialize c path
         else
-          let headers_cache = 
-            match (get_subtree_from_uid cache_uid alg_full) with
-            | None -> failwith "error"
-            | Some x -> get_headers x
-          in
           let headers = get_headers query in
-          (* bug when the sort query has headers having attributes
-             occuring several times *)
-          let rename = Array.map2 (fun source n -> ("", snd source), n) headers_cache headers in
           let _ = print_endline "duplicate :D" in
-          new Rename.rename (new InputCachedFile.inputCachedFile path) (rename |> Array.to_list)
+          new Materialize.unmaterialize headers path
       else 
         aux query
     else 
