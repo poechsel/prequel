@@ -43,7 +43,7 @@ let check_coherence query =
       let b_h, b' = c_qu b in
       Headers.union a_h b_h, AstUnion(a', b')
 
-    | AstSelect(attributes, tables, selector, order, group, having) ->
+    | AstSelect(attributes, tables, selector, order, group, having, aggregates) ->
       let headers_tables, tables = 
         let headers, tables = tables
                               |> List.map (check_relation headers)
@@ -76,7 +76,7 @@ let check_coherence query =
            group
            |> Utils.option_map (List.map (check_expr headers))
       in let having = Utils.option_map (check_cond headers) having
-      in headers, AstSelect(attributes, tables, selector, order, group, having)
+      in headers, AstSelect(attributes, tables, selector, order, group, having, aggregates)
 
   and check_relation headers relation = 
     let headers, ast =
@@ -119,60 +119,43 @@ let check_coherence query =
       else 
         AstNotIn(c_e e, sub)
 
+  and check_attribute headers (table, at) =
+      let real =
+        headers
+        |> Utils.find_first (fun (x, y) ->
+            if table = "" then
+              y = at
+            else
+              (x = table) && (y = at))
+      in begin
+        match real with
+        | None -> raise (Errors.SemanticError
+            (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_header (table, at))))
+        | Some x -> x
+      end
+
   and check_expr headers expr = 
     let c_e = check_expr headers in
     match expr with
     | AstExprOp(op, a, b) ->
       AstExprOp(op, c_e a, c_e b)
+    | AstExprAgg(op, attr) ->
+      AstExprAgg(op, check_attribute headers attr)
     | AstAtom(atom) ->
       AstAtom(check_atom headers atom)
 
-  and check_select_attribute headers attribute = 
+  and check_select_attribute headers attribute =
     match attribute with
-    | AstSeAttribute (table, at) ->
-      let real =  
-        headers 
-        |> Utils.find_first (fun (x, y) -> 
-            if table = "" then 
-              y = at 
-            else 
-              (x = table) && (y = at)
-          )
-      in begin
-        match real  with
-        | None ->
-          raise (Errors.SemanticError (""))
-        | Some x ->
-          AstSeAttribute x
-      end 
+    | AstSeAttribute attr -> AstSeAttribute (check_attribute headers attr)
     | AstSeRenamed(s, n) ->
       AstSeRenamed(check_select_attribute headers s, n)
     | AstSeExpr(expr) ->
       AstSeExpr(check_expr headers expr)
-        
 
   and check_atom headers atom =
     match atom with
-    | Attribute (table, at) ->
-      let real =  
-        headers 
-        |> Utils.find_first (fun (x, y) -> 
-            if table = "" then 
-              y = at 
-            else 
-              (x = table) && (y = at)
-          )
-      in begin
-        match real  with
-        | None ->
-          raise (Errors.SemanticError (Printf.sprintf "Attribute \"%s\" doesn't exists" (Debug.string_of_atom atom)))
-        | Some x ->
-          Attribute x
-      end 
+    | Attribute attr -> Attribute  (check_attribute headers attr)
     | x -> x
-
-
-
 
   in snd @@ check_query [] query
 
@@ -195,7 +178,7 @@ let rename_tables query =
       (m, a)
   in let rec ren_query env query = 
        match query with
-       | AstSelect (attributes, relations, where, order, group, having) ->
+       | AstSelect (attributes, relations, where, order, group, having, aggregates) ->
          let env' = env in
          let env'' = List.fold_left (fun previous (_, c) -> incr uid; Env.add c (string_of_int !uid) previous) env' relations in
          let relations = List.map (fun (rel, c) ->
@@ -211,7 +194,7 @@ let rename_tables query =
          in let order = match order with
           | None   -> None
           | Some l -> Some (List.map (fun (expr, ord) -> (ren_expr env'' expr, ord)) l)
-         in AstSelect(attributes, relations, where, order, group, having)
+         in AstSelect(attributes, relations, where, order, group, having, aggregates)
        | AstUnion(a, b) ->
          AstUnion(ren_query env a, ren_query env b)
        | AstMinus(a, b) ->
@@ -241,6 +224,8 @@ let rename_tables query =
     match expr with
     | AstExprOp(op, a, b) ->
       AstExprOp(op, ren_expr env a, ren_expr env b)
+    | AstExprAgg(op, attr) ->
+      AstExprAgg(op, ren_attribute env attr)
     | AstAtom x ->
       AstAtom(ren_atom env x)
 
@@ -251,3 +236,79 @@ let rename_tables query =
     | x -> x
 
   in ren_query (Env.empty) query
+
+
+(** Deletes every AstExprEgg from the query, and replaces it with
+    a uniquely named attribute. This attribute will be added to
+    the list of aggregates to compute. *)
+let extract_aggregates query =
+  let current_uid = ref 0 in
+  let new_uid () =
+    incr current_uid;
+    string_of_int (!current_uid) ^ "_agg" in
+
+  let rec extract_query query =
+    let env = Hashtbl.create 10 in
+    match query with
+      | AstSelect (attributes, relations, where, order, group, having, aggregates) ->
+        let attributes = attributes
+          |> List.map (fun attribute -> extract_attribute_select env attribute) in
+
+        let relations = relations
+          |> List.map (fun (rel, c) ->
+               begin match rel with
+                | AstSubQuery q -> AstSubQuery(extract_query q)
+                | _ -> rel
+               end, c) in
+
+        let where = Utils.option_map (extract_cond env) where in
+
+        let order = match order with
+          | None   -> None
+          | Some l -> Some (List.map (fun (expr, ord) -> (extract_expr env expr, ord)) l) in
+
+        let aggregates = aggregates @
+          (Hashtbl.fold (fun uid h q -> (uid, h) :: q) env []) in
+
+        AstSelect(attributes, relations, where, order, group, having, aggregates)
+
+      | AstUnion(a, b) ->
+        AstUnion(extract_query a, extract_query b)
+      | AstMinus(a, b) ->
+        AstMinus(extract_query a, extract_query b)
+
+  and extract_attribute_select env attribute =
+    match attribute with
+    | AstSeRenamed(x, a) ->
+      AstSeRenamed(extract_attribute_select env x, a)
+    | AstSeAttribute (a, b) ->
+      AstSeAttribute (a, b)
+    | AstSeExpr(expr) ->
+      AstSeExpr(extract_expr env expr)
+
+  and extract_cond env cond =
+    match cond with
+    | AstBinOp(op, a, b) ->
+      AstBinOp(op, extract_cond env a, extract_cond env b)
+    | AstCompOp(op, a, b) ->
+      AstCompOp(op, extract_expr env a, extract_expr env b)
+    | AstIn(expr, query) ->
+      AstIn(extract_expr env expr, extract_query query)
+    | AstNotIn(expr, query) ->
+      AstNotIn(extract_expr env expr, extract_query query)
+
+  and extract_expr env expr =
+    match expr with
+    | AstExprOp(op, a, b) ->
+      AstExprOp(op, extract_expr env a, extract_expr env b)
+    | AstExprAgg(op, attr) ->
+      let uid = new_uid () in
+      Hashtbl.add env uid (op, attr);
+      AstAtom(Attribute ("", uid))
+    | AstAtom x ->
+      AstAtom(extract_atom env x)
+
+  and extract_atom env atom =
+    atom
+
+  in extract_query query

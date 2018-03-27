@@ -62,7 +62,9 @@ and ('a, 'b) query =
       'a option *
       ((expression * ordering) list) option *
       (expression list) option *
-      'a option
+      'a option *
+      (* This last parameter is a list of aggregates to compute. *)
+      (string * (aggop * attribute)) list
   | AstMinus of ('a, 'b) query * ('a, 'b) query
   | AstUnion of ('a, 'b) query * ('a, 'b) query
 [@@deriving show]

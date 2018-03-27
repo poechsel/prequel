@@ -144,7 +144,7 @@ having:
 
 query:
   | s=select f=from w=where? o=order? g=group? h=having?
-    { AstSelect(s, f, w, o, g, h) }
+    { AstSelect(s, f, w, o, g, h, []) }
   | LPAR query RPAR MINUS LPAR query RPAR
     { AstMinus($2, $6) }
   | LPAR query RPAR UNION LPAR query RPAR

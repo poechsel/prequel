@@ -11,8 +11,8 @@ let print_attribute at =
 
 let rec add_table_to_query query table = 
   match query with
-  | AstSelect(at, tables, where, order, group, having) ->
-    AstSelect(at, table::tables, where, order, group, having)
+  | AstSelect(at, tables, where, order, group, having, aggregates) ->
+    AstSelect(at, table::tables, where, order, group, having, aggregates)
   | AstUnion(a, b) ->
     AstUnion(add_table_to_query a table, add_table_to_query b table)
   | AstMinus(a, b) ->
@@ -20,14 +20,14 @@ let rec add_table_to_query query table =
 
 let rec add_condition_to_query query cond = 
   match query with
-  | AstSelect(at, tables, where, order, group, having) ->
+  | AstSelect(at, tables, where, order, group, having, aggregates) ->
     AstSelect(
       at, tables, 
       begin match where with
         | None -> Some ([[cond]], [])
         | Some (x, y) -> Some (List.map (fun x -> cond::x) x, List.map (fun x -> cond :: x) y)
       end,
-      order, group, having)
+      order, group, having, aggregates)
   | AstUnion(a, b) ->
     AstUnion(add_condition_to_query a cond, add_condition_to_query b cond)
   | AstMinus(a, b) ->
@@ -35,7 +35,7 @@ let rec add_condition_to_query query cond =
 
 let rec get_attributes_query query =
   match query with
-  | AstSelect(at, _, _, _, _, _) ->
+  | AstSelect(at, _, _, _, _, _, _) ->
     at
   | AstUnion(a, b) | AstMinus(a, b) ->
     get_attributes_query a
@@ -66,7 +66,7 @@ let compile query =
     | AstUnion (a, b) ->
       AlgUnion(new_uid (), compile_query ~project:project a, compile_query ~project:project b)
 
-    | AstSelect(attributes, tables, cond, order, group, having) ->
+    | AstSelect(attributes, tables, cond, order, group, having, aggregates) ->
       (* First of all, we transform each table from the
          WHERE clause into the corresponding relation,
          surrounded by an `AlgRename` operator. *)
@@ -111,6 +111,8 @@ let compile query =
            else 
              AlgRename(new_uid(), layer, renaming)
       in
+
+      (* TODO: AGGREGATES *)
 
       (* If needed, we sort the result using a AlgOrder. *)
       let layer = match order with

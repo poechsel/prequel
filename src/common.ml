@@ -28,6 +28,7 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     query
     |> AstChecker.check_coherence
     |> AstChecker.rename_tables
+    |> AstChecker.extract_aggregates
     |> AstTransformers.disjunction
     |> Compiler.compile 
     |> OptimisationPass.push_down_select
