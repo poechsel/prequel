@@ -75,7 +75,7 @@ class group
     val mutable current = None
     val mutable ahead = None
 
-    method cached_next =
+    method private cached_next =
       current <- ahead;
       ahead <- sub#next;
       current, ahead

@@ -11,7 +11,8 @@ let get_uid_from_alg a =
   | AlgSelect(u, _, _)
   | AlgAddColumn(u, _, _, _)
   | AlgRename(u, _, _)
-  | AlgOrder(u, _, _) ->
+  | AlgOrder(u, _, _)
+  | AlgGroup(u, _, _, _) ->
     u
 
 
@@ -91,4 +92,8 @@ let rec feed_from_query (query : algebra) : feed_interface =
       (fun (v, ord) -> (Arithmetics.compile_value headers v, ord))
       criterion in
     new ExternalSort.sort sub compiled
-
+  | AlgGroup(_, a, keys, exports) ->
+    let headers = get_headers a in
+    let sub = feed_from_query a in
+    let keys' = Array.map (Arithmetics.compile_value headers) keys in
+    new Group.group sub keys' exports
