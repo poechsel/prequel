@@ -21,18 +21,19 @@ let rec disjunction (query : ('b cond, 'b) query) : ('b disj list list, 'b) quer
     | AstUnion(a, b) ->
       AstUnion(disjunction_query a
               , disjunction_query b)
-    | AstSelect(attrs, rels, None, order, group, having, aggregates) ->
+    | AstSelect(attrs, rels, cond, order, group, having, aggregates) ->
       AstSelect(attrs
                , List.map (fun x -> disjunction_relation x) rels
-               , None
-               , order, group, None (* TODO *)
-               , aggregates
-               )
-    | AstSelect(attrs, rels, Some cond, order, group, having, aggregates) ->
-      AstSelect(attrs
-               , List.map (fun x -> disjunction_relation x) rels
-               , Some (disjunction_cond cond)
-               , order, group, None (* TODO *)
+               , begin match cond with
+                  | None   -> None
+                  | Some c -> Some (disjunction_cond c)
+                 end
+               , order
+               , group
+               , begin match having with
+                  | None   -> None
+                  | Some c -> Some (disjunction_cond c)
+                 end
                , aggregates
                )
   and disjunction_relation rel =
