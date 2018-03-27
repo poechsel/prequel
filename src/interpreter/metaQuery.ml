@@ -39,8 +39,8 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       Rename.get_headers tbl h
     | AlgAddColumn(_, a, _, n) ->
       AddColumn.get_headers (get_headers ~f:f a) n
-    | AlgOrder(_, a, criterion) ->
-      Select.get_headers (get_headers ~f:f a)
+    | AlgOrder(_, a, _) ->
+      ExternalSort.get_headers (get_headers ~f:f a)
   in 
   let _ = f (get_uid_from_alg query) res in
   res
