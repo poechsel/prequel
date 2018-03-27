@@ -21,7 +21,6 @@ module Headers = struct
 end 
 
 
-
 let check_coherence query =
   (* Check if a given query seems 'coherent'. That means: 
       - every input csv exists
@@ -54,25 +53,33 @@ let check_coherence query =
       in let selector = Utils.option_map (check_cond headers) selector
       in let attributes = List.map (check_select_attribute headers) attributes
       in let headers, attributes = 
-           if attributes = [] then 
-             headers, List.map (fun at -> AstSeAttribute at) headers
-           else 
-             attributes 
-             |> List.map (fun attribute ->
-                 match attribute with
-                 | AstSeRenamed(x, new_name) ->
-                   ("", new_name), attribute
-                 | AstSeAttribute(at) ->
-                   at, attribute
-                 | AstSeExpr(expr) ->
-                   let new_name = new_uid_expr () |> string_of_int in
-                   ("", new_name), AstSeRenamed(attribute, new_name)
-               )
-             |> List.split
-      in let order = 
+        if attributes = [] then 
+          headers, List.map (fun at -> AstSeAttribute at) headers
+        else 
+          let headers', attributes' = 
+            attributes
+            |> List.map (fun attribute -> match attribute with
+              | AstSeRenamed(x, new_name) ->
+                Some ("", new_name), attribute
+              | AstSeAttribute(at) ->
+                None, attribute
+              | AstSeExpr(AstExprAgg _) ->
+                None, attribute
+              | AstSeExpr(expr) ->
+                let new_name = new_uid_expr () |> string_of_int in
+                Some ("", new_name), AstSeRenamed(attribute, new_name)
+              )
+            |> List.split
+        in let headers'' =
+          headers'
+          |> List.fold_left (fun q h -> match h with
+            | Some h' -> h' :: q
+            | None -> q) []
+        in headers @ headers'', attributes'
+      in let order =
            order
            |> Utils.option_map (List.map (fun (x, y) -> (check_expr headers x, y)))
-      in let group = 
+      in let group =
            group
            |> Utils.option_map (List.map (check_expr headers))
       in let having = Utils.option_map (check_cond headers) having
@@ -154,7 +161,7 @@ let check_coherence query =
 
   and check_atom headers atom =
     match atom with
-    | Attribute attr -> Attribute  (check_attribute headers attr)
+    | Attribute attr -> Attribute (check_attribute headers attr)
     | x -> x
 
   in snd @@ check_query [] query
@@ -194,6 +201,9 @@ let rename_tables query =
          in let order = match order with
           | None   -> None
           | Some l -> Some (List.map (fun (expr, ord) -> (ren_expr env'' expr, ord)) l)
+         in let group = match group with
+          | None   -> None
+          | Some g -> Some (List.map (ren_expr env'') g)
          in AstSelect(attributes, relations, where, order, group, having, aggregates)
        | AstUnion(a, b) ->
          AstUnion(ren_query env a, ren_query env b)
@@ -283,6 +293,10 @@ let extract_aggregates query =
       AstSeRenamed(extract_attribute_select env x, a)
     | AstSeAttribute (a, b) ->
       AstSeAttribute (a, b)
+    | AstSeExpr(AstExprAgg (op, attr)) ->
+      let uid = new_uid () in
+      Hashtbl.add env uid (op, attr);
+      AstSeAttribute("", uid)
     | AstSeExpr(expr) ->
       AstSeExpr(extract_expr env expr)
 
