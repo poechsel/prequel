@@ -76,26 +76,25 @@ let compile query =
          of AlgProduct, surrounded by AlgSelect if needed.
          We also "flatten" subqueries and use the AlgJoin
          operator when that could improve performance. *)
-      let layer = compile_where_clause relations cond in
+      let layer = compile_where_clause relations cond
 
       (* If needed we add new columns corresponding to 
-         arithmetical expressions*)
-      let add_columns =
-           attributes 
-           |> Utils.list_filter_and_map (fun attribute ->
-               match attribute with
-               | AstSeRenamed(AstSeExpr(expr), name) ->
-                 Some (expr, name)
-               | _ -> None
-             )
-      in 
-      let layer = 
+         arithmetical expressions. *)
+      in let add_columns =
+        attributes
+        |> Utils.list_filter_and_map (fun attribute ->
+          match attribute with
+          | AstSeRenamed(AstSeExpr(expr), name) -> Some (expr, name)
+          | _ -> None
+        )
+
+      in let layer =
         List.fold_left (fun previous (expr, n) ->
             AlgAddColumn(new_uid (), layer, alg_expr_of_ast_expr expr, n)
           ) layer add_columns
-      in 
-      (* we rename the columns if needed*)
-      let renaming = 
+
+      (* We rename the columns if needed. *)
+      in let renaming =
         attributes 
         |> Utils.list_filter_and_map (fun attribute ->
             match attribute with
@@ -105,18 +104,47 @@ let compile query =
               Some (previous, ("", next))
             | _ -> None
           )
-      in let layer = 
-           if List.length renaming = 0 then 
-             layer
-           else 
-             AlgRename(new_uid(), layer, renaming)
-      in
 
-      (* TODO: AGGREGATES *)
+      in let layer =
+        if List.length renaming = 0 then
+          layer
+        else
+          AlgRename(new_uid(), layer, renaming)
+
+      (* If there is a GROUP BY operator, we first sort
+         the result using an AlgOrder in ascending order
+         for every key of the GROUP BY, and then add an
+         AlgGroup (which must also get the aggregates). *)
+      in let layer = match group with
+        | None -> layer
+        | Some group ->
+            let order =
+              AlgOrder(
+                new_uid (),
+                layer,
+                group
+                |> List.map alg_expr_of_ast_expr
+                |> List.map (fun e -> (e, Asc))
+                |> Array.of_list) in
+
+            AlgGroup(
+              new_uid (),
+              order,
+              group
+              |> List.map alg_expr_of_ast_expr
+              |> Array.of_list,
+              Array.of_list aggregates
+            )
+
+      (* If there is a HAVING operator, we treat it just
+         like a WHERE that happens right after the GROUP BY. *)
+      in let layer = match having with
+        | None -> layer
+        | Some h -> compile_where_clause [layer] having
 
       (* If needed, we sort the result using a AlgOrder. *)
-      let layer = match order with
-        | None   -> layer
+      in let layer = match order with
+        | None -> layer
         | Some l -> 
             AlgOrder(
               new_uid (),
@@ -126,8 +154,8 @@ let compile query =
 
       (* Finally, we use an `AstProject` to restrict the
          output to the attributes from the SELECT clause. *)
-      let project_attributes = 
-        attributes 
+      let project_attributes =
+        attributes
         |> List.map (fun attribute ->
             match attribute with
             | AstSeRenamed(_, name) -> 
@@ -139,7 +167,7 @@ let compile query =
          AlgProjection(new_uid(), layer, project_attributes |> Array.of_list)
         else layer
 
-  and compile_relation_renamed rel =
+  and compile_relation_renamed relq =
     match rel with
     | x, ""-> 
       compile_relation x
