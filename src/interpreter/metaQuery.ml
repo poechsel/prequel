@@ -56,11 +56,12 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
 
 
 let feed_from_query (query : algebra) : feed_interface = 
-  let alg_full = query in
+  (* first create our cache structure *)
   let cache = Caching.create query in
   let rec feed_from_query query =
     (* convert a query to a feed *)
     let aux query = 
+      (* auxilliary function to convert to feed a term *)
       match query with
       | AlgInput(_, str)   -> 
         new InputCachedFile.inputCachedFile str
@@ -104,12 +105,16 @@ let feed_from_query (query : algebra) : feed_interface =
         new ExternalSort.sort sub compiled
 
     in
+    (* if the current tree can be cached, build a feed that will get the 
+       precomputed results.
+       If it is used as the cache, then materialize the results.
+       Otherwize build the feed "normally" *)
     match (Caching.use_cache cache query) with 
     | Caching.No_cache ->
       aux query
     | Caching.Materialized path ->
       new Materialize.materialize (aux query) path
     | Caching.UnMaterialized path ->
-      let headers = get_headers alg_full in
+      let headers = get_headers query in
       new Materialize.unmaterialize headers path
   in feed_from_query query

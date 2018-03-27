@@ -16,11 +16,20 @@ open AlgebraTypes
    *)
 
 module EnvRename = struct
+  (* environnmenet used to lazilly check if two
+     subtrees represents the same subtree (ie their tables 
+     looks like the same *)
   module Env = Map.Make(struct
       type t = string
       let compare = Pervasives.compare 
     end )
     type t = string Env.t
+
+    (* unify to tables uid
+        Returns the new env and True if the uids can be unified without
+        breaking coherence,
+        False otherwize
+    *)
     let union env a b =
       if Env.mem a env then
         env, Env.find a env = b
@@ -28,6 +37,11 @@ module EnvRename = struct
         Env.add a b env, true
       end 
 
+    (* merge two env
+        Returns the new env and true if we can merge the two env 
+       without breaking coherence.
+       False otherwise
+    *)
     let merge env env' = 
       try
         let f = fun k a b -> if a <> b then raise Not_found else Some a in
@@ -36,12 +50,18 @@ module EnvRename = struct
         env, false
 end 
 
+
 let rec equal_expr env a b =
+  (* check if two exprs are equals 
+    Returns the current env and true if a '=' b, false otherwize
+  *)
   match a, b with
   | AlgAtom(Ast.Attribute (a, b)), AlgAtom(Ast.Attribute (a', b')) ->
+    (* here we just want to unify a and a'*)
     let e, s = EnvRename.union env a a' in
     e, s && b = b'
   | AlgBinOp(op, a, b), AlgBinOp(op', a', b') ->
+    (* we proceed recursively*)
     let e, s = equal_expr env a a' in
     let e', s' = equal_expr env b b' in
     let e, o = EnvRename.merge e e' in
@@ -139,6 +159,15 @@ let rec equal_algebra env a b =
   e, s
 
 
+(* We also need a hash function to build a hashtbl.
+   Unfortunately, the buildin hashfunction hashes on the
+   whole structure. Do to the uids we do not want it.
+
+   In order to build a hash function for our algebras / trees, 
+   we first 'normalize them' (replace uids by a constant value).
+   This will probably give us false positive, but it is not a major 
+   issue
+   *)
 
 let rec normalize_expr expr = 
   match expr with
@@ -171,6 +200,9 @@ let rec normalize alg =
   | AlgOrder(_, a, criterion) ->
     AlgOrder(0, normalize a, Array.map (fun (a, o) -> normalize_expr a, o) criterion)
 
+
+
+(* our caching hashtbl *)
 module AlgHashtbl = Hashtbl.Make(struct
     type t = algebra
     let equal i j = snd (equal_algebra (EnvRename.Env.empty) i j)
@@ -182,12 +214,17 @@ module AlgHashtbl = Hashtbl.Make(struct
 
 
 let create alg = 
+  (* create the cache structure*)
   let tbl = AlgHashtbl.create 10 in
   let rec main alg = 
     let _ = 
       if AlgHashtbl.mem tbl alg then
         let base_uid, path = AlgHashtbl.find tbl alg in
         if path = "" then
+          (* we store tuples in the hashtbl of the form (uid of the 
+             tree which is the representant of this type of tree, 
+             name of the temp file
+             *)
           AlgHashtbl.add tbl alg (get_uid_from_alg alg, TempManager.new_temp ())
         else ()
       else
@@ -217,6 +254,11 @@ type caching_status =
   | UnMaterialized of string 
 
 let use_cache tbl query = 
+  (* give us the caching status of `query` for a cache `tbl`
+     Returns No_cache if this tree is not to be cached.
+     Materialized if its result needs to be saved.
+     UnMaterialized if the results of the query have been cached 
+     *)
     if AlgHashtbl.mem tbl query then
       let cache_uid, path = AlgHashtbl.find tbl query in
       if path <> "" then

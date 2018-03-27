@@ -35,6 +35,7 @@ class unmaterialize headers name =
   object(self)
     inherit AlgebraTypes.feed_interface
     val sub = new InputCachedFile.inputCachedFile name
+    val headers = headers
 
     method next = 
       sub#next
@@ -43,5 +44,6 @@ class unmaterialize headers name =
       sub#reset
 
     method headers =
+      flush_all ();
       headers
   end
