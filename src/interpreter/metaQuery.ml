@@ -14,6 +14,29 @@ let get_uid_from_alg a =
   | AlgOrder(u, _, _) ->
     u
 
+let rec get_subtree_from_uid uid tree = 
+  (* get the subtrees having a specified uid *)
+  if get_uid_from_alg tree = uid then
+    Some tree
+  else 
+    match tree with
+  | AlgUnion(_, a, b) 
+  | AlgProduct(_, a, b) 
+  | AlgJoin(_, (a, _), (b, _))
+  | AlgMinus(_, a, b) ->
+    begin match (get_subtree_from_uid uid a) with
+      | None -> get_subtree_from_uid uid b
+      | Some x -> Some x
+    end 
+  | AlgAddColumn(_, a, _, _) 
+  | AlgOrder(_, a, _) 
+  | AlgProjection(_, a, _) 
+  | AlgRename(_, a, _)
+  | AlgSelect(_, a, _) ->
+    get_subtree_from_uid uid a
+  | AlgInput _ ->
+    None
+
 
 
 let rec get_headers ?(f=(fun _ _ -> ())) query =
@@ -258,15 +281,12 @@ let rec initialize_caching tbl alg =
 
 
 let feed_from_query (query : algebra) : feed_interface = 
+  let alg_full = query in
   let tbl = AlgHashtbl.create 10 in
   let () = initialize_caching tbl query in 
   let rec feed_from_query query =
-    let cache_uid, path = AlgHashtbl.find tbl query in
-    let _ = 
-      if path <> "" then
-        print_endline "duplicate :D"
-    in 
     (* convert a query to a feed *)
+    let aux query = 
     match query with
     | AlgInput(_, str)   -> 
       new InputCachedFile.inputCachedFile str
@@ -305,4 +325,29 @@ let feed_from_query (query : algebra) : feed_interface =
           (fun (v, ord) -> (Arithmetics.compile_value headers v, ord))
           criterion in
       new ExternalSort.sort sub compiled
+
+    in
+
+    if AlgHashtbl.mem tbl query then
+      let cache_uid, path = AlgHashtbl.find tbl query in
+      if path <> "" then
+        if cache_uid = get_uid_from_alg query then
+          let c = aux query in
+          new Materialize.materialize c path
+        else
+          let headers_cache = 
+            match (get_subtree_from_uid cache_uid alg_full) with
+            | None -> failwith "error"
+            | Some x -> get_headers x
+          in
+          let headers = get_headers query in
+          (* bug when the sort query has headers having attributes
+             occuring several times *)
+          let rename = Array.map2 (fun source n -> ("", snd source), n) headers_cache headers in
+          let _ = print_endline "duplicate :D" in
+          new Rename.rename (new InputCachedFile.inputCachedFile path) (rename |> Array.to_list)
+      else 
+        aux query
+    else 
+      aux query
   in feed_from_query query
