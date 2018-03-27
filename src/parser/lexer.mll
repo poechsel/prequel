@@ -49,5 +49,9 @@ rule token = parse
     | "not"     -> NOT
     | "in"      -> IN
     | "as"      -> AS
+    | "min"     -> MIN
+    | "max"     -> MAX
+    | "avg"     -> AVG
+    | "count"   -> COUNT
     | _         -> ID(s)
 }

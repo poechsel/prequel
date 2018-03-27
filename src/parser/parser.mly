@@ -8,7 +8,8 @@
 %token <int> NUMBER
 %token SELECT WHERE HAVING GROUP BY FROM ORDER UNION MINUS
 %token AND OR NOT IN LT GT LEQ GEQ EQ NEQ PUNKT COMA ASC DESC
-%token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV EOF
+%token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV MIN MAX AVG COUNT EOF
+%token NOOP
 
 %nonassoc UMINUS 
 
@@ -18,85 +19,108 @@
 
 main:
   /* Top-level commands */
-  | PUNKT ID ENDLINE        { Command ($2, None) }
-  | PUNKT ID ID ENDLINE     { Command ($2, Some $3) }
-  | PUNKT ID STRING ENDLINE { Command ($2, Some $3) }
+  | PUNKT ID ENDLINE         { Command ($2, None) }
+  | PUNKT ID ID ENDLINE      { Command ($2, Some $3) }
+  | PUNKT ID STRING ENDLINE  { Command ($2, Some $3) }
 
   /* SQL queries */
-  | query ENDLINE { Query ($1) }
-  | query EOF     { Query ($1) }
+  | query ENDLINE  { Query ($1) }
+  | query EOF      { Query ($1) }
 
 
+/* Attributes */
 attribute_select_ren:
-    | attribute_select       { $1 }
-    | attribute_select ID { AstSeRenamed ($1, $2) }
-    | attribute_select AS ID { AstSeRenamed ($1, $3) }
+  | attribute_select        { $1 }
+  | attribute_select ID     { AstSeRenamed ($1, $2) }
+  | attribute_select AS ID  { AstSeRenamed ($1, $3) }
 
 attribute_select:
-    | add_expression        { match $1 with
-                                | AstAtom(Attribute x) -> AstSeAttribute x
-                                | x -> AstSeExpr x}
+  | agg_expression {
+      match $1 with
+        | AstAtom(Attribute x) -> AstSeAttribute x
+        | x -> AstSeExpr x }
 
 attribute:
-    | ID PUNKT ID     { $1, $3 }
-    | ID              { "", $1 }
+  | ID PUNKT ID  { $1, $3 }
+  | ID           { "", $1 }
 
 
 /* Relations */
 relation:
-    | relation_atom AS ID         { $1, $3 }
-    | relation_atom ID            { $1, $2 }
+  | relation_atom AS ID  { $1, $3 }
+  | relation_atom ID     { $1, $2 }
 
 relation_atom:
-    | STRING                      { AstTable $1 }
-    | LPAR query RPAR             { AstSubQuery $2 }
+  | STRING               { AstTable $1 }
+  | LPAR query RPAR      { AstSubQuery $2 }
+
+
+/* Expressions */
+%inline no_agg:
+  | NOOP   { failwith "Shouldn't happen." }
+
+/* An expression which doesn't contain aggregate functions. */
+std_expression: add_expression(no_agg) { $1 }
+
+%inline all_agg:
+  | MIN    { Min }
+  | MAX    { Max }
+  | AVG    { Avg }
+  | COUNT  { Count }
+
+/* An expression which might contain aggregate functions. */
+agg_expression: add_expression(all_agg) { $1 }
+
+add_expression(agg):
+  | SUB add_expression(agg) %prec UMINUS          { AstExprOp(Sub, AstAtom (Number 0), $2) }
+  | mult_expression(agg) ADD add_expression(agg)  { AstExprOp(Add, $1, $3) }
+  | mult_expression(agg) SUB add_expression(agg)  { AstExprOp(Sub, $1, $3) }
+  | mult_expression(agg)                          { $1 }
+
+mult_expression(agg):
+  | atom TIMES mult_expression(agg) { AstExprOp(Times, AstAtom $1, $3) }
+  | atom DIV mult_expression(agg)   { AstExprOp(Div, AstAtom $1, $3) }
+  | LPAR add_expression(agg) RPAR   { $2 }
+  | atom                            { AstAtom $1 }
+
+  /* We only allow aggregate function calls on attributes for the moment */
+  | agg LPAR attribute RPAR         { AstExprAgg($1, $3) }
 
 
 /* Conditions */
-condition:
-    | and_condition OR condition            { AstBinOp (Or, $1, $3) }
-    | and_condition                         { $1 }
+std_condition: condition(std_expression) { $1 }
+agg_condition: condition(agg_expression) { $1 }
 
-and_condition:
-    | at_condition AND and_condition        { AstBinOp(And, $1, $3) }
-    | at_condition                          { $1 }
+condition(expr):
+  | and_condition(expr) OR condition(expr)  { AstBinOp (Or, $1, $3) }
+  | and_condition(expr)                     { $1 }
 
-at_condition:
-    | LPAR condition RPAR                   { $2 }
-    | add_expression comp add_expression    { AstCompOp($2, $1, $3) }
-    | add_expression IN LPAR query RPAR     { AstIn($1, $4) }
-    | add_expression NOT IN LPAR query RPAR { AstNotIn($1, $5) }
+and_condition(expr):
+  | at_condition(expr) AND and_condition(expr)  { AstBinOp(And, $1, $3) }
+  | at_condition(expr)                          { $1 }
+
+at_condition(expr):
+  | LPAR condition(expr) RPAR    { $2 }
+  | expr comp expr               { AstCompOp($2, $1, $3) }
+  | expr IN LPAR query RPAR      { AstIn($1, $4) }
+  | expr NOT IN LPAR query RPAR  { AstNotIn($1, $5) }
         
 
 /* Comparison operators */
 comp:
-  | LT  { Lt }
-  | GT  { Gt }
-  | LEQ { Leq }
-  | GEQ { Geq }
-  | EQ  { Eq }
-  | NEQ { Neq }
-
-
-/* Expressions */
-add_expression:
-    | SUB add_expression %prec UMINUS       { AstExprOp(Sub, AstAtom (Number 0), $2) }
-    | mult_expression ADD add_expression    { AstExprOp(Add, $1, $3) }
-    | mult_expression SUB add_expression    { AstExprOp(Sub, $1, $3) }
-    | mult_expression                       { $1 }
-
-mult_expression:
-    | atom TIMES mult_expression            { AstExprOp(Times, AstAtom $1, $3) }
-    | atom DIV mult_expression              { AstExprOp(Div, AstAtom $1, $3) }
-    | LPAR add_expression RPAR              { $2 }
-    | atom                                  { AstAtom $1 }
+  | LT   { Lt }
+  | GT   { Gt }
+  | LEQ  { Leq }
+  | GEQ  { Geq }
+  | EQ   { Eq }
+  | NEQ  { Neq }
 
 
 /* Atoms */
 atom:
-    | NUMBER    { Number $1 }
-    | STRING    { String $1 }
-    | attribute { Attribute $1 }
+  | NUMBER     { Number $1 }
+  | STRING     { String $1 }
+  | attribute  { Attribute $1 }
 
 
 /* Queries */
@@ -106,27 +130,22 @@ select:
 from:
   | FROM separated_list(COMA, relation) { $2 }
 where:
-  | WHERE condition { $2 }
+  | WHERE std_condition { $2 }
 order_criteria:
-  | add_expression      { ($1, Asc) }
-  | add_expression ASC  { ($1, Asc) }
-  | add_expression DESC { ($1, Desc) }
+  | std_expression       { ($1, Asc) }
+  | std_expression ASC   { ($1, Asc) }
+  | std_expression DESC  { ($1, Desc) }
 order:
   | ORDER BY separated_list(COMA, order_criteria) { $3 }
 group:
-  | GROUP BY separated_list(COMA, add_expression) { $3 }
+  | GROUP BY separated_list(COMA, std_expression) { $3 }
 having:
-  | HAVING condition { $2 }
+  | HAVING agg_condition { $2 }
 
 query:
-    | s = select
-      f = from
-      w = option(where)
-      o = option(order)
-      g = option(group)
-      h = option(having)
-        { AstSelect(s, f, w, o, g, h) }
-    | LPAR query RPAR MINUS LPAR query RPAR
-        { AstMinus($2, $6) }
-    | LPAR query RPAR UNION LPAR query RPAR
-        { AstUnion($2, $6) }
+  | s=select f=from w=where? o=order? g=group? h=having?
+    { AstSelect(s, f, w, o, g, h) }
+  | LPAR query RPAR MINUS LPAR query RPAR
+    { AstMinus($2, $6) }
+  | LPAR query RPAR UNION LPAR query RPAR
+    { AstUnion($2, $6) }
