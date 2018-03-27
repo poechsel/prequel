@@ -85,3 +85,19 @@ let attributes_of_condition cond =
      |> List.sort_uniq Pervasives.compare 
 
 
+
+
+let get_uid_from_alg a = 
+  match a with
+  | AlgInput(u, _) 
+  | AlgUnion(u, _, _)
+  | AlgMinus(u, _, _)
+  | AlgProjection(u, _, _)
+  | AlgProduct(u, _, _)
+  | AlgJoin(u, _, _)
+  | AlgSelect(u, _, _)
+  | AlgAddColumn(u, _, _, _)
+  | AlgRename(u, _, _)
+  | AlgOrder(u, _, _) ->
+    u
+
