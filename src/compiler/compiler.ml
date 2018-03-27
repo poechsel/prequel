@@ -167,7 +167,7 @@ let compile query =
          AlgProjection(new_uid(), layer, project_attributes |> Array.of_list)
         else layer
 
-  and compile_relation_renamed relq =
+  and compile_relation_renamed rel =
     match rel with
     | x, ""-> 
       compile_relation x
