@@ -22,7 +22,7 @@ let push_down_select query =
   let tbl = Hashtbl.create 10 in
   let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) query in
   let get_headers query =
-    Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
+    Hashtbl.find tbl (AlgebraTypes.get_uid_from_alg query)
     |> Array.to_list
     |> SetAttributes.of_list 
   in 
@@ -120,7 +120,7 @@ let create_joins alg =
   let tbl = Hashtbl.create 10 in
   let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
   let get_headers query =
-    Hashtbl.find tbl (MetaQuery.get_uid_from_alg query)
+    Hashtbl.find tbl (AlgebraTypes.get_uid_from_alg query)
   in 
 
   let rec visitor alg = 
@@ -172,7 +172,7 @@ let insert_projections alg =
   let tbl = Hashtbl.create 10 in
   let _ = MetaQuery.get_headers ~f:(fun x y -> Hashtbl.add tbl x y) alg in
   let get_headers alg =
-    Hashtbl.find tbl (MetaQuery.get_uid_from_alg alg)
+    Hashtbl.find tbl (AlgebraTypes.get_uid_from_alg alg)
     |> Array.to_list
     |> SetAttributes.of_list 
   in 
