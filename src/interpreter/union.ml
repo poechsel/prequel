@@ -12,7 +12,8 @@ class union (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_inte
     method next = 
       let next = match left#next with
         | None -> right#next
-        | x -> x
+        | Some x -> 
+          Some x
       in match next with
       | None -> None
       | Some x ->

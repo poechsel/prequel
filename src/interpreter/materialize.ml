@@ -19,8 +19,8 @@ class materialize sub name =
         let _ = close_out ic in
         sub <- new InputCachedFile.inputCachedFile path
       else ();
-         
-        sub#next
+
+      sub#next
 
     method reset = 
       sub#reset
@@ -32,18 +32,21 @@ class materialize sub name =
 
 
 class unmaterialize headers name =
+  let _ = print_endline name in
   object(self)
     inherit AlgebraTypes.feed_interface
     val sub = new InputCachedFile.inputCachedFile name
     val headers = headers
 
     method next = 
-      sub#next
+      match (sub#next) with
+      | None -> None
+      | Some x ->
+        Some x
 
     method reset = 
       sub#reset
 
     method headers =
-      flush_all ();
       headers
   end

@@ -68,7 +68,7 @@ let feed_from_query (query : algebra) : feed_interface =
       | AlgUnion(_, a, b) ->
         new Union.union (feed_from_query a) (feed_from_query b)
       | AlgMinus(_, a, b) ->
-        new Minus.minus (feed_from_query a) (feed_from_query b)
+        new Minus.minusJoin (feed_from_query a) (feed_from_query b)
       | AlgProjection(_, a, headers) ->
         new Projection.projection (feed_from_query a) headers
       | AlgSelect(_, a, filter) ->

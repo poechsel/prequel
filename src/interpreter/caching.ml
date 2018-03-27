@@ -225,7 +225,7 @@ let create alg =
              tree which is the representant of this type of tree, 
              name of the temp file
              *)
-          AlgHashtbl.add tbl alg (get_uid_from_alg alg, TempManager.new_temp ())
+          AlgHashtbl.add tbl alg (base_uid, TempManager.new_temp ())
         else ()
       else
         AlgHashtbl.add tbl alg (get_uid_from_alg alg, "")
@@ -235,7 +235,8 @@ let create alg =
     | AlgProduct(_, a, b) 
     | AlgJoin(_, (a, _), (b, _))
     | AlgMinus(_, a, b) ->
-      main a; main b
+      let _ = main a in
+      main b
     | AlgAddColumn(_, a, _, _) 
     | AlgOrder(_, a, _) 
     | AlgProjection(_, a, _) 

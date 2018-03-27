@@ -252,7 +252,8 @@ let optimize_projections alg =
      than headers needed after its executions
      *)
   let insert_projection headers headers_before sub =
-      if SetAttributes.cardinal headers <> SetAttributes.cardinal headers_before then
+    if SetAttributes.cardinal headers > 0
+         && SetAttributes.cardinal headers <> SetAttributes.cardinal headers_before then
         AlgProjection(new_uid ()
                      , sub
                      , SetAttributes.elements headers |> Array.of_list)
@@ -282,12 +283,14 @@ let optimize_projections alg =
     match alg with
     | AlgProjection(u, a, b) ->
       AlgProjection(u, v a, b)
-    | AlgMinus(u, a, b) ->
-      AlgMinus(u, v a, v b)
     | AlgProduct(u, a, b) ->
       AlgProduct(u, v a, v b)
+    | AlgMinus(u, a, b) ->
+      (* minus is (as union) special in the sens that we are losing informations
+         when computing the header at the end *)
+      AlgMinus(u, visitor (get_headers a) a, visitor (get_headers b) b)
     | AlgUnion(u, a, b) ->
-      AlgUnion(u, v a, v b)
+      AlgUnion(u, visitor (get_headers a) a, visitor (get_headers b) b)
     | AlgRename(u, a, l) ->
       let headers = 
         headers

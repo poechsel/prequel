@@ -33,6 +33,8 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     |> OptimisationPass.push_down_select
     |> OptimisationPass.create_joins
     |> OptimisationPass.select_compressor
+    in let _ = Printf.printf "%s\n" (AlgebraTypes.show_algebra algebra) in
+    let algebra = algebra 
     |> OptimisationPass.optimize_projections
   in
 
