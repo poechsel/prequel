@@ -39,7 +39,7 @@ class minus (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_inte
       
 
 (* Using a sort to provide a more memory efficient minus *)
-class minusJoin (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_interface) =
+class minusSort (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_interface) =
   let left, left_evaluator = 
     let h = left#headers in 
     let keys = Array.map (fun x -> 
@@ -96,7 +96,7 @@ class minusJoin (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_
         Some x
       | Some x, Some y ->
         let x_v = left_evaluator x in
-        let y_v = right_evaluator x in
+        let y_v = right_evaluator y in
         (* if x < y *)
         if Pervasives.compare x_v y_v < 0 then begin
           current_left <- next_until_neq left current_left;

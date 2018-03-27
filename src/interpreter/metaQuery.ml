@@ -66,9 +66,9 @@ let feed_from_query (query : algebra) : feed_interface =
       | AlgInput(_, str)   -> 
         new InputCachedFile.inputCachedFile str
       | AlgUnion(_, a, b) ->
-        new Union.union (feed_from_query a) (feed_from_query b)
+        new Union.unionSort (feed_from_query a) (feed_from_query b)
       | AlgMinus(_, a, b) ->
-        new Minus.minusJoin (feed_from_query a) (feed_from_query b)
+        new Minus.minusSort (feed_from_query a) (feed_from_query b)
       | AlgProjection(_, a, headers) ->
         new Projection.projection (feed_from_query a) headers
       | AlgSelect(_, a, filter) ->
