@@ -18,6 +18,13 @@ type binop =
   | Times
 [@@deriving show]
 
+type aggop =
+  | Min
+  | Max
+  | Avg
+  | Count
+[@@deriving show]
+
 type ordering =
   | Asc
   | Desc
@@ -31,6 +38,7 @@ type atom =
 
 type expression =
   | AstExprOp of binop * expression * expression
+  | AstExprAgg of aggop * attribute
   | AstAtom of atom
 [@@deriving show]
 
