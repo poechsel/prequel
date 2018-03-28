@@ -100,6 +100,7 @@ let get_uid_from_alg a =
   | AlgSelect(u, _, _)
   | AlgAddColumn(u, _, _, _)
   | AlgRename(u, _, _)
-  | AlgOrder(u, _, _) ->
+  | AlgOrder(u, _, _)
+  | AlgGroup(u, _, _, _) ->
     u
 

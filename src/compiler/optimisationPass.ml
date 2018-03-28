@@ -248,7 +248,7 @@ let rec delete_projections alg =
   | AlgAddColumn(u, a, b, c) ->
     AlgAddColumn(u, delete_projections a, b, c)
   | AlgGroup(u, a, b, c) ->
-    AlgGroup(u, delete_projections, b, c)
+    AlgGroup(u, delete_projections a, b, c)
   | AlgOrder(u, a, criterion) ->
     AlgOrder(u, delete_projections a, criterion)
 
@@ -338,6 +338,28 @@ let optimize_projections alg =
                           expr) in 
       insert_projection 
         headers 
+        headers_before
+        sub
+
+    | AlgGroup(u, a, exprs, b) ->
+      let headers_before = 
+        Array.fold_left (fun previous a ->
+            attributes_of_condition a
+            |> SetAttributes. of_list
+            |> SetAttributes.union previous
+          ) headers exprs
+      in let headers_before = 
+        Array.fold_left (fun previous (_, (_, a)) ->
+               [a]
+            |> SetAttributes. of_list
+            |> SetAttributes.union previous
+             ) headers_before b
+      in 
+      let sub = 
+        AlgGroup(u, visitor headers_before a, exprs, b)
+      in
+      insert_projection
+        headers
         headers_before
         sub
 

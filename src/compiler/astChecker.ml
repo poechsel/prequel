@@ -115,6 +115,7 @@ let check_coherence query =
       AstCompOp(op, c_e a, c_e b)
     | AstIn(e, sub) ->
       let h, sub = check_query headers sub
+      in let _ = print_endline @@ String.concat " " (List.map Debug.string_of_header h)
       in if List.length h != 1 then
         raise (Errors.SemanticError "the subquery inside a 'in' must have only one row")
       else 

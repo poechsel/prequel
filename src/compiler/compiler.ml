@@ -166,6 +166,7 @@ let compile ?(generate_joins=true) query =
               ("", name)
             | AstSeAttribute(x) ->
               x
+            | _ -> failwith "unexpected attribute"
           )
         in if project then
          AlgProjection(new_uid(), layer, project_attributes |> Array.of_list)
@@ -209,6 +210,7 @@ let compile ?(generate_joins=true) query =
         let attr_from_select s = match s with 
           | AstSeAttribute x -> Attribute(x)
           | AstSeRenamed(_, x) -> Attribute("", x)
+          | _ -> failwith "unexpected attribute"
         in
         let rec step_once_for_joins and_exprs acc tables = 
           (* during a step we try to merge two tables inside a join.

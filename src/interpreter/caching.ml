@@ -82,6 +82,23 @@ let rec equal_algebra env a b =
     let e, s'' = EnvRename.merge e e' in
     e,
     s && s' && s''
+  | AlgGroup(_, a, exprs, b), AlgGroup(_, a', exprs', b') ->
+    if Array.length exprs <> Array.length exprs' then
+      env, false
+    else
+      let e, s = 
+        List.combine (Array.to_list exprs) (Array.to_list exprs')
+        |> List.fold_left (fun (e, s) (a, a') -> 
+            let e', s' = equal_expr env a a' in
+            let e, o = EnvRename.merge e e' in
+            e, s' && o
+          ) (env, true)
+      in 
+      let e', s' = equal_algebra env a a' in
+      let e, o = EnvRename.merge e e' in
+      e,
+      o && s && s'
+
   | AlgAddColumn(_, a, b, c), AlgAddColumn(_, a', b', c') ->
     let e, s = equal_algebra env a a' in
     let e', s' = equal_expr env b b' in
@@ -179,7 +196,9 @@ let rec normalize_expr expr =
 
 let rec normalize alg = 
   match alg with
-  | AlgInput(u, str) ->
+  | AlgGroup(_, a, expr, b) ->
+    AlgGroup(0, normalize a, Array.map normalize_expr expr, b)
+  | AlgInput(_, str) ->
     AlgInput(0, str)
   | AlgUnion(_, a, b) ->
     AlgUnion(0, normalize a, normalize b)
@@ -241,7 +260,8 @@ let create alg =
     | AlgOrder(_, a, _) 
     | AlgProjection(_, a, _) 
     | AlgRename(_, a, _)
-    | AlgSelect(_, a, _) ->
+    | AlgSelect(_, a, _)
+    | AlgGroup(_, a, _, _) ->
       main a
     | AlgInput _ ->
       ()
