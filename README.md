@@ -48,6 +48,11 @@ Usage: ./prequel [path]
 When path is not specified, runs in REPL mode.
   --output A file in which to write the output.
   --graph A file in which to save a graph of the term.
+  --use-caching Enable caching optimization.
+  --no-select-push-down Disable push down of selections
+  --no-projection-opti Disable optimisations of projections
+  --no-joins Disable joins creations
+  --big-data Use algorithms suited for large datasets
   -help  Display this list of options
   --help  Display this list of options
 ```

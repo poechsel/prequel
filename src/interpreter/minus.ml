@@ -1,7 +1,7 @@
 let get_headers h_a h_b = h_a
 
 (* this one is not totally inline, it would require an external sort *)
-class minus (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_interface) =
+class minusHash (left : AlgebraTypes.feed_interface) (right : AlgebraTypes.feed_interface) =
   object(self)
     inherit AlgebraTypes.feed_interface
     val left = left

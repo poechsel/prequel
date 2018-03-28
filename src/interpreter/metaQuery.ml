@@ -55,7 +55,7 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
 
 
 
-let feed_from_query ?use_caching:(use_caching=false) (query : algebra) : feed_interface = 
+let feed_from_query ?use_caching:(use_caching=false) ?big_data:(big_data=false) (query : algebra) : feed_interface = 
   (* first create our cache structure *)
   let cache = Caching.create query in
   let rec feed_from_query query =
@@ -66,9 +66,15 @@ let feed_from_query ?use_caching:(use_caching=false) (query : algebra) : feed_in
       | AlgInput(_, str)   -> 
         new InputCachedFile.inputCachedFile str
       | AlgUnion(_, a, b) ->
-        new Union.unionSort (feed_from_query a) (feed_from_query b)
+        if not big_data then
+          new Union.unionHash (feed_from_query a) (feed_from_query b)
+        else
+          new Union.unionSort (feed_from_query a) (feed_from_query b)
       | AlgMinus(_, a, b) ->
-        new Minus.minusSort (feed_from_query a) (feed_from_query b)
+        if not big_data then
+          new Minus.minusHash (feed_from_query a) (feed_from_query b)
+        else
+          new Minus.minusSort (feed_from_query a) (feed_from_query b)
       | AlgProjection(_, a, headers) ->
         new Projection.projection (feed_from_query a) headers
       | AlgSelect(_, a, filter) ->
@@ -80,13 +86,11 @@ let feed_from_query ?use_caching:(use_caching=false) (query : algebra) : feed_in
         let eval_a = Arithmetics.compile_value (get_headers a) expr_a in
         let sub_b = feed_from_query b in
         let eval_b = Arithmetics.compile_value (get_headers b) expr_b in
-        (* WE MUST SORT the right hand side *)
-    (*
-    let sub_b = new ExternalSort.sort sub_b [|Arithmetics.compile_value (sub_b#headers) expr_b, Ast.Asc|] in
-    new Join.joinSorted (sub_a, eval_a) (sub_b, eval_b)
-       *)
-        (* fastest for small tables *)
-        new Join.joinHash (sub_a, eval_a) (sub_b, eval_b)
+        if not big_data then
+            new Join.joinHash (sub_a, eval_a) (sub_b, eval_b)
+        else 
+          let sub_b = new ExternalSort.sort sub_b [|Arithmetics.compile_value (sub_b#headers) expr_b, Ast.Asc|] in
+          new Join.joinSorted (sub_a, eval_a) (sub_b, eval_b)
       | AlgAddColumn(_, a, expr, n) ->
         new AddColumn.addColumn 
           (feed_from_query a) 

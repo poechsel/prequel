@@ -10,6 +10,7 @@ type optimizations =
     no_select_pd : bool ref;
     no_projections : bool ref;
     no_joins : bool ref;
+    big_data : bool ref;
   }
 
 
@@ -19,16 +20,9 @@ let make_optimizations () =
     no_select_pd = ref false;
     no_projections = ref false;
     no_joins = ref false;
+    big_data = ref false;
   }
 
-let default_opti = 
-
-  {
-    use_caching = ref false;
-    no_select_pd = ref false;
-    no_projections = ref false;
-    no_joins = ref false;
-  }
 (** parse_input : in_channel -> Command.t
     Attemps to parse a command from the standard input. *)
 let parse_input channel =
@@ -60,12 +54,8 @@ let run_query
     ?pretty:(pretty=false) 
     ?output:(output=stdout) 
     ?graph:(graph=None) 
-    ?opti:(opti={ 
-        use_caching = ref false;
-        no_select_pd = ref false; 
-        no_projections = ref false; 
-        no_joins = ref false; 
-      }) query =
+    ?opti:(opti=make_optimizations ()) 
+    query =
   let algebra =
     query
     |> AstChecker.check_coherence
@@ -106,7 +96,7 @@ let run_query
     end 
   end;
 
-  let feed = MetaQuery.feed_from_query ~use_caching:!(opti.use_caching) algebra in
+  let feed = MetaQuery.feed_from_query ~use_caching:!(opti.use_caching) ~big_data:!(opti.big_data) algebra in
   if pretty then
     feed#print
   else begin

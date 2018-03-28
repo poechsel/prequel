@@ -151,6 +151,7 @@ let () =
     "--no-select-push-down", Arg.Set opti.no_select_pd, "Disable push down of selections";
     "--no-projection-opti", Arg.Set opti.no_projections, "Disable optimisations of projections";
     "--no-joins", Arg.Set opti.no_joins, "Disable joins creations";
+    "--big-data", Arg.Set opti.big_data, "Use algorithms suited for large datasets";
   ] in
 
   Arg.parse speclist ((:=) path) usage;
