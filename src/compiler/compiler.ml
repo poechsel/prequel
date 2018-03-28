@@ -274,8 +274,9 @@ let compile ?(generate_joins=true) query =
               let at = List.hd @@ get_attributes_query query in
               let query' = add_table_to_query query (AstCompiled (previous), "") in
               let attribute = attr_from_select at in
-              AlgSelect(new_uid(), compile_query ~project:false query',
-                        alg_expr_of_ast_cond (DisjCompOp(Neq, expr, AstAtom(attribute)))) 
+              AlgMinus(new_uid (), previous, 
+                       AlgSelect(new_uid(), compile_query ~project:false query',
+                        alg_expr_of_ast_cond (DisjCompOp(Eq, expr, AstAtom(attribute)))))
             | DisjIn(expr, query) ->
               let at = List.hd @@ get_attributes_query query in
               let query' = add_table_to_query query (AstCompiled (previous), "") in

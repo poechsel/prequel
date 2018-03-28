@@ -64,7 +64,7 @@ during the algorithm,
       in let attributes = List.map (check_select_attribute headers) attributes
       in let headers, headers_visible, attributes = 
         if attributes = [] then 
-          headers, headers_visible, List.map (fun at -> AstSeAttribute at) headers
+          headers, headers_visible, List.map (fun at -> AstSeAttribute at) headers_visible
         else 
           let headers', attributes' = 
             attributes
