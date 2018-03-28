@@ -60,7 +60,7 @@ When path is not specified, runs in REPL mode.
 
 # Features.
 
-### What it is capable now:
+## What it is capable now:
 
 - parsing of a SQL query
 - compilation to linear algebra
@@ -69,12 +69,49 @@ When path is not specified, runs in REPL mode.
 - queries of the form `Select ... FROM (SELECT ... FROM ... WHERE ...), ... WHERE ...`
 - arithmetic expressions inside a `where` clause
 
-### What remains to be done:
 
-- implemented an external sort algorithm (or a bloom filter) in order to update `minus` and `union` operator to operate without loading everything to memory
-- group by
-- optimization
+## Known issues:
 
-### Known issues:
+- common subqueries caching is in highly experimental state and you can assume it's (nearly) not working. Thus, it is deactivated by default.
 
-- sometimes, (as with `not in` expressions or queries with a `in` subquery inside an other `in` subquery), the returned result will contain duplicated entries. This is probably due to the products
+## What can be done:
+
+- Further debugging for subqueries caching
+- A simple cost model. Some work have been done on it theorically, but the time was missing to implement it
+- A join sort algorithm scaling to big tables. For now the joinSort algorithm keeps a lot of thing in memory. It could be easily modify in order to store intermediary results on the harddrive: in the same way done in the external sort, we can split the sorted results into "chunks" that can fit into memory. Then, we can identify in which chunk is the first occurence of the sibling's row (using a dichotomy on the first row of each chunk). Finally we iterate from this first row to the next row until we have a row that can't be joined.
+- implement `JoinProjectRename` and `ReadSelectProjectRename`. It can be easily done inside the method `feed_from_query` by using pattern matching. We didn't think this optimisation was usefull as our algorithms are already optimised for memory thanks to a feed approach. Time was lacking to add placeholders for these two "meta" relations.
+- a distinct operator. We didn't implemented it, but it is easy to implemenet it either by using a groupby or a sort.
+
+# Choices of implementations
+
+## Feed approach
+
+Since the start of the project we've decided to use feeds (or iterators) in order to execute the physical plan. They allow us to have efficient algorithms both in speed and in memory.
+
+One bottleneck to this approach was sorting. Sorting is a cornerstones of our algorithms, but it is impossible to sort a feed without storing it. We designed an external sort which allow us to sort big files with a low memory footprints. We also took care of optimizing it until we couldn't think of ways to optimize it anymore. As a result, we achieve to sort a 400mo CSV files in ~70/75s using less than 100mo of RAM.
+
+We also designed to versions of union, minus and join. One if the file could fit in memory, which uses hashmaps. The other one if the file can't be stored into RAM. In this case we're using external sorting extensively.
+
+## How compilations happens.
+
+Our compilation process go through several passes:
+
+- We transform the SQL AST in order to rename tables to uids, to make sure the attributes we try to access exists and to transform the query in a disjunctive form
+- Now that we have transformed the SQL Ast in a "normalized form", we compile it. During compilations we can insert joins in a way that try to maximize the number of joins.
+- Then, we apply several optimizations steps: one pushing select down, an other trying to optimize the placement of projections (removing and adding some if needed), and an other deducing other joins. We call by joins expressions of the form  `SELECT_{a.foo = b.bar}(PRODUCT(... containing a ; ... containing b))`, or in SQL request of the form `SELECT * from a, b WHERE a.foo = b.bar`
+- finally we convert or relationnal algebra tree to a physical plan made of feeds.
+
+## Cost model
+
+In order to choose which implementations of the algorithms to choose (unionHash or unionSort for exemple), we thought of adding a cost model which will estimate the number of elements outputted by every subtrees. To do so, we would have computed for each input csv:
+- the number of rows
+- for each attribute the maximum number of same values
+
+Using these informations we can overapproximate the number of elements outputted by a select, a projection, a product...
+Then, if this estimation is greater than a offset we can pick an algorithm which is able to perform on huge datasets.
+
+## Caching
+
+Because of our preprocessing pass, subqueries caching is not trivial to do in our impementation. In fact, a subtree `a` and a subtree `b` represents the same 'expression' if the naming of the tables is "coherent", that is if we can rename the tables of `a` to obtain `b`.
+
+Caching is not well tested and quite buggy on some case. For now, we mostly cache nodes of the form `Input("foo.csv")`, which is quite dumb. It is deactivated by default.
