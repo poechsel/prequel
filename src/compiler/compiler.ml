@@ -118,22 +118,6 @@ let compile query =
               Array.of_list aggregates
             )
 
-      (* If there is a HAVING operator, we treat it just
-         like a WHERE that happens right after the GROUP BY. *)
-      in let layer = match having with
-        | None -> layer
-        | Some h -> compile_where_clause [layer] having
-
-      (* If needed, we sort the result using a AlgOrder. *)
-      in let layer = match order with
-        | None -> layer
-        | Some l -> 
-            AlgOrder(
-              new_uid (),
-              layer,
-              List.map (fun (expr, order) -> alg_expr_of_ast_expr expr, order) l
-              |> Array.of_list)
-
       (* We rename the columns if needed. *)
       in let renaming =
         attributes
@@ -151,6 +135,22 @@ let compile query =
           layer
         else
           AlgRename(new_uid(), layer, renaming)
+
+      (* If there is a HAVING operator, we treat it just
+         like a WHERE that happens right after the GROUP BY. *)
+      in let layer = match having with
+        | None -> layer
+        | Some h -> compile_where_clause [layer] having
+
+      (* If needed, we sort the result using a AlgOrder. *)
+      in let layer = match order with
+        | None -> layer
+        | Some l -> 
+            AlgOrder(
+              new_uid (),
+              layer,
+              List.map (fun (expr, order) -> alg_expr_of_ast_expr expr, order) l
+              |> Array.of_list)
 
       (* Finally, we use an `AstProject` to restrict the
          output to the attributes from the SELECT clause. *)
