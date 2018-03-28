@@ -11,11 +11,10 @@ module Env = struct
   type t = (string * string) list
   let rec find env x = 
     let rec find env' x = 
-      let _ = if env' = [] then print_string "zeitoetio\n" in
-    match env' with
-    | [] -> let _ = List.iter (fun (x, y) -> Printf.printf "%s.%s\n" (fst x) (snd x)) env in failwith (snd x)
-    | (a, b)::tl when x=a -> b
-    | _::tl -> find tl x
+      match env' with
+      | [] -> failwith (snd x)
+      | (a, b)::tl when x=a -> b
+      | _::tl -> find tl x
     in find env x
 
 

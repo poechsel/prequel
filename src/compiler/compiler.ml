@@ -273,10 +273,13 @@ let compile ?(generate_joins=true) query =
             | DisjNotIn (expr, query) -> 
               let at = List.hd @@ get_attributes_query query in
               let query' = add_table_to_query query (AstCompiled (previous), "") in
+              let headers = MetaQuery.get_headers previous in
               let attribute = attr_from_select at in
               AlgMinus(new_uid (), previous, 
-                       AlgSelect(new_uid(), compile_query ~project:false query',
-                        alg_expr_of_ast_cond (DisjCompOp(Eq, expr, AstAtom(attribute)))))
+                       AlgProjection(new_uid(), 
+                                     AlgSelect(new_uid(), compile_query ~project:false query',
+                                               alg_expr_of_ast_cond (DisjCompOp(Eq, expr, AstAtom(attribute)))), headers))
+
             | DisjIn(expr, query) ->
               let at = List.hd @@ get_attributes_query query in
               let query' = add_table_to_query query (AstCompiled (previous), "") in
