@@ -27,9 +27,11 @@ Then, building the project is as simple as running `make`.
 _For a better experience using the REPL, we recommand that you install [rlwrap](https://github.com/hanslub42/rlwrap)._
 
 
-## Running unit tests.
+## Running tests.
 
-To run unit tests, you have to install [OUnit2](http://ounit.forge.ocamlcore.org/api-ounit/OUnit2.html) using `opam install ounit2`, and then run `make test`.
+Prequel is covered by 38 unit tests and 5 integration tests.
+
+To run them, you have to install [OUnit2](http://ounit.forge.ocamlcore.org/api-ounit/OUnit2.html) using `opam install ounit2`, and then run `make test`.
 
 
 # Usage.
@@ -40,6 +42,8 @@ Here are a few examples of queries:
 
 - `SELECT * FROM "tests/sources/projets.csv" p;`
 - `SELECT * FROM "tests/sources/projets.csv" p WHERE p.idp > p.responsable;`
+- `SELECT * FROM "tests/sources/projets.csv" p ORDER BY p.idp DESC;`
+- `SELECT * FROM "tests/sources/projets.csv" p GROUP BY p.responsable;`
 
 You can also use the engine from the command line:
 ```
@@ -49,69 +53,104 @@ When path is not specified, runs in REPL mode.
   --output A file in which to write the output.
   --graph A file in which to save a graph of the term.
   --use-caching Enable caching optimization.
-  --no-select-push-down Disable push down of selections
-  --no-projection-opti Disable optimisations of projections
-  --no-joins Disable joins creations
-  --big-data Use algorithms suited for large datasets
+  --no-select-push-down Disable push down of selections.
+  --no-projection-opti Disable optimisations of projections.
+  --no-joins Disable the use of joins.
+  --big-data Use algorithms suited for large datasets.
   -help  Display this list of options
   --help  Display this list of options
-```
+  ```
 
 
 # Features.
 
-## What it is capable now:
+Prequel supports the following constructs:
+- Using the `UNION` and `MINUS` set operators.
+- Projecting on some or all columns (using `SELECT * FROM ◽`).
+- Computating of arbitraty arithmetic expressions (e.g. `SELECT 1 + 1 FROM ◽`).
+- Renaming of columns using `AS` (e.g. `SELECT foo.bar AS baz FROM ◽`).
+- Filtering rows using the `WHERE` clause (e.g. `SELECT * FROM ◽ WHERE foo.bar + foo.baz < 10`).
+- Using subqueries:
+	- In the `FROM` clause (e.g. `SELECT table.foo FROM (SELECT * FROM ◽) AS table`).
+	- In the `WHERE` clause, using `WHERE IN` and `WHERE NOT IN`.
+- Ordering rows by arbitrary expressions (e.g. `SELECT * FROM ◽ ORDER BY foo.bar ASC, foo.baz + foo.bam DESC`).
+- Grouping rows by arbitrary expressions (e.g. `SELECT * FROM ◽ GROUP BY foo.baz + foo.bam`).
+- Using the `MAX`, `MIN`, `AVG` and `COUNT` aggregate functions:
+	- In the `SELECT` clause (e.g. `SELECT MAX(foo.bar) FROM ◽ GROUP BY foo.baz`).
+	- In the `HAVING` clause (e.g. `SELECT * FROM ◽ GROUP BY foo.baz HAVING MAX(foo.bar) > 5`).
 
-- parsing of a SQL query
-- compilation to linear algebra
-- physical interpretation using feeds
-- `in` and `not in` subqueries
-- queries of the form `Select ... FROM (SELECT ... FROM ... WHERE ...), ... WHERE ...`
-- arithmetic expressions inside a `where` clause
+Query examples for all those features can be found in the `tests/` folder.
 
 
-## Known issues:
+# How it works.
 
-- common subqueries caching is in highly experimental state and you can assume it's (nearly) not working. Thus, it is deactivated by default.
+Under the hood: 
 
-## What can be done:
+- Prequel parses the SQL query into an instance of `Ast.query`.
 
-- Further debugging for subqueries caching
-- A simple cost model. Some work have been done on it theorically, but the time was missing to implement it
-- A join sort algorithm scaling to big tables. For now the joinSort algorithm keeps a lot of thing in memory. It could be easily modify in order to store intermediary results on the harddrive: in the same way done in the external sort, we can split the sorted results into "chunks" that can fit into memory. Then, we can identify in which chunk is the first occurence of the sibling's row (using a dichotomy on the first row of each chunk). Finally we iterate from this first row to the next row until we have a row that can't be joined.
-- implement `JoinProjectRename` and `ReadSelectProjectRename`. It can be easily done inside the method `feed_from_query` by using pattern matching. We didn't think this optimisation was usefull as our algorithms are already optimised for memory thanks to a feed approach. Time was lacking to add placeholders for these two "meta" relations.
-- a distinct operator. We didn't implemented it, but it is easy to implemenet it either by using a groupby or a sort.
+- It then applies several checking and optimization phases to that query (see `AstChecker` and `AstTransform`):
+	- It gives each table a unique name to avoid attribute shadowing.
+	- It normalizes the query, putting all the conditions in disjunctive form.
 
-# Choices of implementations
+- It compiles that query into a relational term.
 
-## Feed approach
+  During compilation, it tries to replace expresions of the form `SELECT * from a, b WHERE a.foo = b.bar` with joins.
 
-Since the start of the project we've decided to use feeds (or iterators) in order to execute the physical plan. They allow us to have efficient algorithms both in speed and in memory.
+- This term is then further optimized, by trying to:
+	- push `Select`s down;
+	- optimize the placement of projections (removing and adding some if needed);
+	- substituting expressions of the form `Select_{a.foo = b.bar}(Product(α, β))`, where `α` contains `a` and `β` contains `b`, with a `Join`.
+
+- Finally, it converts the term to a physical plan, and evaluates it lazily.
+
+
+## About lazy evaluation.
+
+Since the start of the project we've decided to use lazy evaluation (in the form of iterators, or `feeds` as we call them) when executing the physical plan. This allows us to have efficient algorithms both in speed and in memory.
 
 One bottleneck to this approach was sorting. Sorting is a cornerstones of our algorithms, but it is impossible to sort a feed without storing it. We designed an external sort which allow us to sort big files with a low memory footprints. We also took care of optimizing it until we couldn't think of ways to optimize it anymore. As a result, we achieve to sort a 400mo CSV files in ~70/75s using less than 100mo of RAM.
 
-We also designed to versions of union, minus and join. One if the file could fit in memory, which uses hashmaps. The other one if the file can't be stored into RAM. In this case we're using external sorting extensively.
+We also designed two versions of union, minus and join. One if the entire file fits in memory, which uses Hashmaps. The other if the file can't be stored into RAM. In this case we're using external sorting extensively.
 
-## How compilations happens.
 
-Our compilation process go through several passes:
+## About `GROUP BY` and aggregate functions.
 
-- We transform the SQL AST in order to rename tables to uids, to make sure the attributes we try to access exists and to transform the query in a disjunctive form
-- Now that we have transformed the SQL Ast in a "normalized form", we compile it. During compilations we can insert joins in a way that try to maximize the number of joins.
-- Then, we apply several optimizations steps: one pushing select down, an other trying to optimize the placement of projections (removing and adding some if needed), and an other deducing other joins. We call by joins expressions of the form  `SELECT_{a.foo = b.bar}(PRODUCT(... containing a ; ... containing b))`, or in SQL request of the form `SELECT * from a, b WHERE a.foo = b.bar`
-- finally we convert or relationnal algebra tree to a physical plan made of feeds.
+The computation of aggregate functions was a little tricky.
 
-## Cost model
+Because the `Group` relational operator only outputs one row per group, operators that would come after it (e.g. a `Projection` when using `SELECT` with an expression containing an aggregate function, or a `Select` when using a `HAVING` clause) would lose necessary information about the inside of the group.
 
-In order to choose which implementations of the algorithms to choose (unionHash or unionSort for exemple), we thought of adding a cost model which will estimate the number of elements outputted by every subtrees. To do so, we would have computed for each input csv:
-- the number of rows
-- for each attribute the maximum number of same values
+To work around this, Prequel first extracts all the calls to aggregates functions in `AstChecker.extract_aggregates` in the `SELECT` and `HAVING` clauses, and replaces them with a reference to an attribute with a uniquely generated name. Then, when compiling the query, the `Group` operator receives a list of `(name, aggregate function call)` couples to compute for each group. This way, the `Group` operator is able to output extra columns for each function call, which can be reused by operators that come after it.
 
-Using these informations we can overapproximate the number of elements outputted by a select, a projection, a product...
-Then, if this estimation is greater than a offset we can pick an algorithm which is able to perform on huge datasets.
 
-## Caching
+## About caching.
 
-Because of our preprocessing pass, subqueries caching is not trivial to do in our impementation. In fact, a subtree `a` and a subtree `b` represents the same 'expression' if the naming of the tables is "coherent", that is if we can rename the tables of `a` to obtain `b`.
+Because of our preprocessing pass, subqueries caching is not trivial to do in our impementation. In fact, a subtree `a` and a subtree `b` represents the same "expression" if the naming of the tables is "coherent", that is if we can rename the tables of `a` to obtain `b`.
 
-Caching is not well tested and quite buggy on some case. For now, we mostly cache nodes of the form `Input("foo.csv")`, which is quite dumb. It is deactivated by default.
+So, at the moment, caching is not well tested and even buggy in some case -- and we mostly cache nodes of the form `Input("foo.csv")`, which is quite dumb. Because of this, it is disabled by default, and can be enabled using the `--use-caching` option.
+
+
+# What could still be done.
+
+- Further debugging for subqueries caching.
+- A simple cost model.
+
+  In order to choose which implementation of the algorithms to choose (UnionHash or UnionSort for example), we thought of adding a cost model which would estimate the number of elements produced by every subtree.
+
+  To do so, we would have computed, for each input CSV file:
+  - the number of rows;
+  - for each attribute the maximum number of same values.
+
+  Using this data, we can over-approximate the number of elements produced by a `Select`, a `Projection`, a `Product`, etc.
+  Then, if this estimation is greater than a fixed offset, we pick an algorithm which is able to perform on huge datasets.
+
+- A join sort algorithm scaling to big tables.
+
+  For now the JoinSort algorithm keeps a lot of thing in memory. This could easily be modified in order to store intermediate results on the hard drive: in the same way as with the external sort, we can split the sorted results into "chunks" that can fit into memory.
+
+  Then, we can identify in which chunk the first occurence of the sibling's row is (using a dichotomy on the first row of each chunk). Finally, we can iterate from this first row to the next row until we have a row that can't be joined.
+
+- Implementing `JoinProjectRename` and `ReadSelectProjectRename`.
+
+  It can be easily done inside the method `feed_from_query` by using pattern matching. We didn't think this optimisation was *really* useful as our algorithms are already optimised for memory thanks to a feed approach. Time was lacking to add placeholders for these two "meta" relations.
+
+- A `DISTINCT` operator. We didn't have time to implement it, but it is really easy to do using either a `GroupBy` or a `Sort`.
