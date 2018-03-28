@@ -50,10 +50,10 @@ class group
     Array.map (function
       | Max,   i, None,   _      -> Max,   i, Some (~:i),       None
       | Max,   i, Some m, _      -> Max,   i, Some (max m ~:i), None
-      | Min,   i, None,   _      -> Max,   i, Some (~:i),       None
-      | Min,   i, Some m, _      -> Max,   i, Some (min m ~:i), None
+      | Min,   i, None,   _      -> Min,   i, Some (~:i),       None
+      | Min,   i, Some m, _      -> Min,   i, Some (min m ~:i), None
       | Avg,   i, None,   _      -> Avg,   i, Some (1),         Some (~:i)
-      | Avg,   i, Some s, Some n -> Avg,   i, Some (n + 1),     Some (s + ~:i)
+      | Avg,   i, Some n, Some s -> Avg,   i, Some (n + 1),     Some (s + ~:i)
       | Count, i, None,   _      -> Count, i, Some (1),         None
       | Count, i, Some n, _      -> Count, i, Some (n + 1),     None
       | _ -> failwith "Error while computing aggregate.") in
