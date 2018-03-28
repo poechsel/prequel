@@ -1,7 +1,6 @@
-SELECT depts1.idd, depts2.idd
-FROM 
-	"tests/sources/departements.csv" depts1, 
-	"tests/sources/departements.csv" depts2;
+SELECT depts1.idd, depts2.idd FROM
+	(SELECT depts.idd FROM "tests/sources/departements.csv" AS depts) AS depts1,
+	(SELECT depts.idd FROM "tests/sources/departements.csv" AS depts) AS depts2;
 
 [normal]
 idd, idd
