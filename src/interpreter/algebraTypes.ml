@@ -29,6 +29,7 @@ type algebra =
 [@@deriving show]
 
 type feed_result = string array
+[@@deriving show]
 
 class virtual feed_interface =
   object(self)
