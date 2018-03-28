@@ -11,7 +11,9 @@
 %token LPAR RPAR AS ENDLINE TIMES ADD SUB DIV MIN MAX AVG COUNT EOF
 %token NOOP
 
-%nonassoc UMINUS 
+%left ADD SUB
+%left TIMES DIV
+%nonassoc NEG
 
 %start main
 %type<Command.t> main
@@ -60,7 +62,7 @@ relation_atom:
   | NOOP   { failwith "Shouldn't happen." }
 
 /* An expression which doesn't contain aggregate functions. */
-std_expression: add_expression(no_agg) { $1 }
+std_expression: expression(no_agg) { $1 }
 
 %inline all_agg:
   | MIN    { Min }
@@ -69,22 +71,19 @@ std_expression: add_expression(no_agg) { $1 }
   | COUNT  { Count }
 
 /* An expression which might contain aggregate functions. */
-agg_expression: add_expression(all_agg) { $1 }
+agg_expression: expression(all_agg) { $1 }
 
-add_expression(agg):
-  | SUB add_expression(agg) %prec UMINUS          { AstExprOp(Sub, AstAtom (Number 0), $2) }
-  | mult_expression(agg) ADD add_expression(agg)  { AstExprOp(Add, $1, $3) }
-  | mult_expression(agg) SUB add_expression(agg)  { AstExprOp(Sub, $1, $3) }
-  | mult_expression(agg)                          { $1 }
-
-mult_expression(agg):
-  | atom TIMES mult_expression(agg) { AstExprOp(Times, AstAtom $1, $3) }
-  | atom DIV mult_expression(agg)   { AstExprOp(Div, AstAtom $1, $3) }
-  | LPAR add_expression(agg) RPAR   { $2 }
-  | atom                            { AstAtom $1 }
+expression(agg):
+  | SUB expression(agg) %prec NEG        { AstExprOp(Sub, AstAtom (Number 0), $2) }
+  | expression(agg) ADD expression(agg)  { AstExprOp(Add, $1, $3) }
+  | expression(agg) SUB expression(agg)  { AstExprOp(Sub, $1, $3) }
+  | atom TIMES expression(agg)           { AstExprOp(Times, AstAtom $1, $3) }
+  | atom DIV expression(agg)             { AstExprOp(Div, AstAtom $1, $3) }
+  | LPAR expression(agg) RPAR            { $2 }
+  | atom                                 { AstAtom $1 }
 
   /* We only allow aggregate function calls on attributes for the moment */
-  | agg LPAR attribute RPAR         { AstExprAgg($1, $3) }
+  | agg LPAR attribute RPAR              { AstExprAgg($1, $3) }
 
 
 /* Conditions */
