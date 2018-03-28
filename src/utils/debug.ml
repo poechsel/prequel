@@ -119,10 +119,16 @@ let graphviz_instrs_of_algebra alg =
     | AlgOrder (u, a, criterion) ->
       let a_lbl, a_str = conv_alg a in
       let _ = incr uid in
-      !uid, a_str 
+      !uid, a_str
             @ [Printf.sprintf node !uid "order" u;
                Printf.sprintf edge_label !uid a_lbl "(TODO)"]
 
+    | AlgGroup (u, a, keys, exports) ->
+      let a_lbl, a_str = conv_alg a in
+      let _ = incr uid in
+      !uid, a_str
+            @ [Printf.sprintf node !uid "group" u;
+               Printf.sprintf edge_label !uid a_lbl "(TODO)"]
 
   in conv_alg alg
 

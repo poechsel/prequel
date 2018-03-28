@@ -19,15 +19,17 @@ type algebra =
   | AlgMinus      of uid * algebra * algebra
   | AlgProjection of uid * algebra * header array
   | AlgJoin       of uid * (algebra * expression) * (algebra * expression)
-  | AlgInput of uid * string (* for input nodes *)
-  | AlgProduct of uid * algebra * algebra
-  | AlgSelect of uid * algebra * expression
-  | AlgRename of uid * algebra * (header * header) list
-  | AlgAddColumn of uid * algebra * expression * string
+  | AlgInput      of uid * string (* for input nodes *)
+  | AlgProduct    of uid * algebra * algebra
+  | AlgSelect     of uid * algebra * expression
+  | AlgRename     of uid * algebra * (header * header) list
+  | AlgAddColumn  of uid * algebra * expression * string
   | AlgOrder      of uid * algebra * (expression * Ast.ordering) array
+  | AlgGroup      of uid * algebra * expression array * (string * (Ast.aggop * header)) array
 [@@deriving show]
 
 type feed_result = string array
+[@@deriving show]
 
 class virtual feed_interface =
   object(self)

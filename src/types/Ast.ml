@@ -18,6 +18,13 @@ type binop =
   | Times
 [@@deriving show]
 
+type aggop =
+  | Min
+  | Max
+  | Avg
+  | Count
+[@@deriving show]
+
 type ordering =
   | Asc
   | Desc
@@ -31,6 +38,7 @@ type atom =
 
 type expression =
   | AstExprOp of binop * expression * expression
+  | AstExprAgg of aggop * attribute
   | AstAtom of atom
 [@@deriving show]
 
@@ -54,7 +62,9 @@ and ('a, 'b) query =
       'a option *
       ((expression * ordering) list) option *
       (expression list) option *
-      'a option
+      'a option *
+      (* This last parameter is a list of aggregates to compute. *)
+      (string * (aggop * attribute)) list
   | AstMinus of ('a, 'b) query * ('a, 'b) query
   | AstUnion of ('a, 'b) query * ('a, 'b) query
 [@@deriving show]

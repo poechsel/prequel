@@ -15,6 +15,8 @@ Quick overview on optimisation for speed:
      in ram usage. Probably because arrays are mutable and not lists.
      ~ the mistery of the gc
 *)
+let get_headers h = h
+
 let evaluate_row keys row = 
   Array.map (fun (f, _) -> f row) keys
 
@@ -204,7 +206,6 @@ class sort
 
     val mutable initialized = false
     val mutable cache = []
-    val keys = keys
     val mutable sub = sub
     
     method next = 
@@ -219,5 +220,5 @@ class sort
       sub#reset
 
     method headers = 
-      sub#headers
+      get_headers sub#headers
   end

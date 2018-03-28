@@ -60,6 +60,7 @@ let run_query
     query
     |> AstChecker.check_coherence
     |> AstChecker.rename_tables
+    |> AstChecker.extract_aggregates
     |> AstTransformers.disjunction
     |> Compiler.compile ~generate_joins:(not !(opti.no_joins))
     |> execute_if (not !(opti.no_select_pd)) OptimisationPass.push_down_select

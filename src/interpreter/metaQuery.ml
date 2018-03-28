@@ -1,4 +1,5 @@
 open AlgebraTypes
+
 let rec get_subtree_from_uid uid tree = 
   (* get the subtrees having a specified uid *)
   if get_uid_from_alg tree = uid then
@@ -17,7 +18,8 @@ let rec get_subtree_from_uid uid tree =
   | AlgOrder(_, a, _) 
   | AlgProjection(_, a, _) 
   | AlgRename(_, a, _)
-  | AlgSelect(_, a, _) ->
+  | AlgSelect(_, a, _)
+  | AlgGroup(_, a, _, _) ->
     get_subtree_from_uid uid a
   | AlgInput _ ->
     None
@@ -47,8 +49,10 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
       Rename.get_headers tbl h
     | AlgAddColumn(_, a, _, n) ->
       AddColumn.get_headers (get_headers ~f:f a) n
-    | AlgOrder(_, a, criterion) ->
-      Select.get_headers (get_headers ~f:f a)
+    | AlgOrder(_, a, _) ->
+      ExternalSort.get_headers (get_headers ~f:f a)
+    | AlgGroup(_, a, _, exports) ->
+      Group.get_headers (get_headers ~f:f a) exports
   in 
   let _ = f (get_uid_from_alg query) res in
   res
@@ -100,6 +104,11 @@ let feed_from_query ?use_caching:(use_caching=false) ?big_data:(big_data=false) 
         new Product.product (feed_from_query a) (feed_from_query b)
       | AlgRename(_, a, b) ->
         new Rename.rename (feed_from_query a) (b)
+      | AlgGroup(_, a, keys, exports) ->
+        let headers = get_headers a in
+        let sub = feed_from_query a in
+        let keys' = Array.map (Arithmetics.compile_value headers) keys in
+        new Group.group sub keys' exports
       | AlgOrder(_, a, criterion) ->
         let headers = get_headers a in
         let sub = feed_from_query a in

@@ -77,6 +77,8 @@ and alg_expr_of_ast_expr expr =
   match expr with
   | AstExprOp(op, a, b) ->
     AlgBinOp(op, alg_expr_of_ast_expr a, alg_expr_of_ast_expr b)
+  | AstExprAgg _ ->
+    failwith "There shouldn't be an aggregate function here."
   | AstAtom a ->
     AlgAtom a
 

@@ -107,6 +107,10 @@ let push_down_select alg =
         let i, a' = analyze_sub a in
         i, AlgOrder(u, a', criterion)
 
+      | AlgGroup (u, a, keys, exports) ->
+        let i, a' = analyze_sub a in
+        i, AlgGroup(u, a', keys, exports)
+
     (* we insert the selectors that can't be pushed down *)
     in List.fold_left (fun a (cond, _) -> AlgSelect(new_uid (), a, cond))
          req
@@ -146,6 +150,8 @@ let rec select_compressor alg =
     AlgInput(u, str)
   | AlgOrder(u, a, criterion) ->
     AlgOrder(u, select_compressor a, criterion)
+  | AlgGroup(u, a, keys, exports) ->
+    AlgGroup(u, select_compressor a, keys, exports)
 
 
 (* deduce joins operations.
@@ -205,6 +211,8 @@ let create_joins alg =
       AlgAddColumn(u, visitor a, b, c)
     | AlgJoin(u, (a, ea), (b, eb)) ->
       AlgJoin(u, (visitor a, ea), (visitor b, eb))
+    | AlgGroup(u, a, b, c) ->
+      AlgGroup(u, visitor a, b, c)
     | AlgOrder(u, a, criterion) ->
       AlgOrder(u, visitor a, criterion)
     | AlgInput _ as alg ->
@@ -239,6 +247,8 @@ let rec delete_projections alg =
     alg
   | AlgAddColumn(u, a, b, c) ->
     AlgAddColumn(u, delete_projections a, b, c)
+  | AlgGroup(u, a, b, c) ->
+    AlgGroup(u, delete_projections, b, c)
   | AlgOrder(u, a, criterion) ->
     AlgOrder(u, delete_projections a, criterion)
 
