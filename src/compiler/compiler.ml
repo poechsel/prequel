@@ -54,10 +54,14 @@ let list_find_and_remove l fct =
       aux tl (x::acc) found
   in aux l [] None
 
-let compile query =
+
+let compile ?(generate_joins=true) query =
   (* compile a given query
      The query MUST be in disjunctive form
-     Return an algebra *)
+     Return an algebra 
+    
+     If generate_joins is false, then we do not create joins
+  *)
   let rec compile_query ?(project=true) query =
     match query with
     | AstMinus (a, b) ->
@@ -225,7 +229,12 @@ let compile query =
           (* remove next line to disable joins *)
           (* this step could be removed to due an optimisation pass doing sensibly the same thing,
              but it allows to add a bit more joins*)
-          let and_exprs, product_terms = repeat_joins_steps and_exprs [] product_terms in
+          let and_exprs, product_terms = 
+            if generate_joins then
+              repeat_joins_steps and_exprs [] product_terms 
+            else 
+              and_exprs, product_terms
+          in
           let layer = compute_final_term product_terms in
           List.fold_left (fun previous current ->
             match current with

@@ -41,7 +41,8 @@ let print_error e =
 
 (** run_command : Command.t -> unit
     Attemps to run a top-level command. *)
-let run_command = function
+let run_command ?opti:(opti=make_optimizations ()) command =
+  match command with
   | Command ("help", None) ->
       print_string @@
         (bold "           .help;") ^ (faint " Displays this message.\n") ^
@@ -78,12 +79,12 @@ let run_command = function
       print_endline @@ Sys.getcwd ()
 
   | Command (_, _)  -> print_error "Unknown command."
-  | Query q       -> run_query ~debug:!debug ~pretty:!pretty q
+  | Query q       -> run_query ~opti:opti ~debug:!debug ~pretty:!pretty q
 
 
 (** start_repl : unit -> unit
     Runs MiniSQL as a REPL loop. *)
-let start_repl () =
+let start_repl ?opti:(opti=make_optimizations ()) () =
   print_header ();
 
   while true do
@@ -101,7 +102,7 @@ let start_repl () =
 
     begin try
       parse_input stdin
-      |> run_command
+      |> run_command ~opti:opti
     with
       | SyntaxError (s)         -> print_error @@ "Syntax error: " ^ s
       | SemanticError (s)       -> print_error @@ "Query semantic error: " ^ s
@@ -114,7 +115,7 @@ let start_repl () =
 
 (** start_single : str -> str -> str -> unit
     Runs MiniSQL on a single file input. *)
-let start_single file output graph =
+let start_single ?opti:(opti=make_optimizations ()) file output graph =
   let chan = open_in file in
   let output =
     if output = "" then
@@ -128,7 +129,7 @@ let start_single file output graph =
       Some graph in
 
   match parse_input chan with
-  | Query q -> run_query ~output ~graph q
+  | Query q -> run_query ~opti:opti ~output ~graph q
   | _       -> failwith "Not a valid SQL query."
 
 
@@ -136,6 +137,7 @@ let () =
   let path = ref "" in
   let output = ref "" in
   let graph = ref "" in
+  let opti = make_optimizations () in
 
   let usage =
     "Prequel version 1.1.\n" ^
@@ -144,14 +146,20 @@ let () =
 
   let speclist = [
     "--output", Arg.Set_string output, "A file in which to write the output.";
-    "--graph", Arg.Set_string graph, "A file in which to save a graph of the term."] in
+    "--graph", Arg.Set_string graph, "A file in which to save a graph of the term.";
+    "--use-caching", Arg.Set opti.use_caching, "Enable caching optimization.";
+    "--no-select-push-down", Arg.Set opti.no_select_pd, "Disable push down of selections";
+    "--no-projection-opti", Arg.Set opti.no_projections, "Disable optimisations of projections";
+    "--no-joins", Arg.Set opti.no_joins, "Disable joins creations";
+  ] in
 
   Arg.parse speclist ((:=) path) usage;
 
   if !path = "" then
-    start_repl ()
+    start_repl ~opti:opti ()
   else
     start_single
+      ~opti: opti
       !path
       !output
       !graph

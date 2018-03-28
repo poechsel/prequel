@@ -5,6 +5,30 @@ open Errors
 open MetaQuery
 
 
+type optimizations =
+  { use_caching : bool ref;
+    no_select_pd : bool ref;
+    no_projections : bool ref;
+    no_joins : bool ref;
+  }
+
+
+let make_optimizations () = 
+  {
+    use_caching = ref false;
+    no_select_pd = ref false;
+    no_projections = ref false;
+    no_joins = ref false;
+  }
+
+let default_opti = 
+
+  {
+    use_caching = ref false;
+    no_select_pd = ref false;
+    no_projections = ref false;
+    no_joins = ref false;
+  }
 (** parse_input : in_channel -> Command.t
     Attemps to parse a command from the standard input. *)
 let parse_input channel =
@@ -21,21 +45,37 @@ let parse_input channel =
       (Lexing.lexeme buffer)
 
 
+let execute_if bo fct =
+  (* if bo = true then return fun x -> fct x,
+     otherwise return fun x -> x*)
+  if bo then
+    fun x -> fct x
+  else 
+    fun x -> x
+
 (** run_query : Ast.t -> unit
     Attempts to execute a query using the interpreter. *)
-let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout) ?graph:(graph=None) query =
+let run_query 
+    ?debug:(debug=false) 
+    ?pretty:(pretty=false) 
+    ?output:(output=stdout) 
+    ?graph:(graph=None) 
+    ?opti:(opti={ 
+        use_caching = ref false;
+        no_select_pd = ref false; 
+        no_projections = ref false; 
+        no_joins = ref false; 
+      }) query =
   let algebra =
     query
     |> AstChecker.check_coherence
     |> AstChecker.rename_tables
     |> AstTransformers.disjunction
-    |> Compiler.compile 
-    |> OptimisationPass.push_down_select
-    |> OptimisationPass.create_joins
+    |> Compiler.compile ~generate_joins:(not !(opti.no_joins))
+    |> execute_if (not !(opti.no_select_pd)) OptimisationPass.push_down_select
+    |> execute_if (not !(opti.no_joins)) OptimisationPass.create_joins
     |> OptimisationPass.select_compressor
-    in let _ = Printf.printf "%s\n" (AlgebraTypes.show_algebra algebra) in
-    let algebra = algebra 
-    |> OptimisationPass.optimize_projections
+    |> execute_if (not !(opti.no_projections)) OptimisationPass.optimize_projections
   in
 
   (* In debug mode, display a graph of the algebra term. *)
@@ -66,7 +106,7 @@ let run_query ?debug:(debug=false) ?pretty:(pretty=false) ?output:(output=stdout
     end 
   end;
 
-  let feed = MetaQuery.feed_from_query algebra in
+  let feed = MetaQuery.feed_from_query ~use_caching:!(opti.use_caching) algebra in
   if pretty then
     feed#print
   else begin

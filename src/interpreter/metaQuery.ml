@@ -55,7 +55,7 @@ let rec get_headers ?(f=(fun _ _ -> ())) query =
 
 
 
-let feed_from_query (query : algebra) : feed_interface = 
+let feed_from_query ?use_caching:(use_caching=false) (query : algebra) : feed_interface = 
   (* first create our cache structure *)
   let cache = Caching.create query in
   let rec feed_from_query query =
@@ -82,7 +82,7 @@ let feed_from_query (query : algebra) : feed_interface =
         let eval_b = Arithmetics.compile_value (get_headers b) expr_b in
         (* WE MUST SORT the right hand side *)
     (*
-    let sub_b = new ExternalSort.sort sub_b [|expr_b|] in
+    let sub_b = new ExternalSort.sort sub_b [|Arithmetics.compile_value (sub_b#headers) expr_b, Ast.Asc|] in
     new Join.joinSorted (sub_a, eval_a) (sub_b, eval_b)
        *)
         (* fastest for small tables *)
@@ -109,12 +109,15 @@ let feed_from_query (query : algebra) : feed_interface =
        precomputed results.
        If it is used as the cache, then materialize the results.
        Otherwize build the feed "normally" *)
-    match (Caching.use_cache cache query) with 
-    | Caching.No_cache ->
+    if use_caching then
+      match (Caching.use_cache cache query) with 
+      | Caching.No_cache ->
+        aux query
+      | Caching.Materialized path ->
+        new Materialize.materialize (aux query) path
+      | Caching.UnMaterialized path ->
+        let headers = get_headers query in
+        new Materialize.unmaterialize headers path
+    else 
       aux query
-    | Caching.Materialized path ->
-      new Materialize.materialize (aux query) path
-    | Caching.UnMaterialized path ->
-      let headers = get_headers query in
-      new Materialize.unmaterialize headers path
   in feed_from_query query
