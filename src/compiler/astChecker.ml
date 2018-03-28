@@ -28,33 +28,43 @@ let check_coherence query =
       - we do not have conflicts for row names
       - in and not in subqueries returns only one row
   *)
+  (* 
+during the algorithm, 
+     - headers represents the set of all attributes we have sawn until 
+        this point of the program
+     - headers_visible represent the set of visible (ie projected) attributes
+  *)
   let uid_expr = ref 0 in
   let new_uid_expr () = incr uid_expr; !uid_expr in
-  let rec check_query headers query =
-    let c_qu = check_query headers in
+  let rec check_query (headers : attribute list) (headers_visible : attribute list) (query : 'a) : attribute list * attribute list * 'a =
+    let c_qu = check_query headers headers_visible in
     match query with
     | AstMinus(a, b) ->
-      let a_h, a' = c_qu a in
-      let b_h, b' = c_qu b in
-      Headers.union a_h b_h, AstMinus(a', b')
+      let a_h, a_visible_h, a' = c_qu a in
+      let b_h, b_visible_h, b' = c_qu b in
+      Headers.union a_h b_h, Headers.union a_visible_h b_visible_h, AstMinus(a', b')
     | AstUnion(a, b) ->
-      let a_h, a' = c_qu a in
-      let b_h, b' = c_qu b in
-      Headers.union a_h b_h, AstUnion(a', b')
+      let a_h, a_visible_h, a' = c_qu a in
+      let b_h, b_visible_h, b' = c_qu b in
+      Headers.union a_h b_h, Headers.union a_visible_h b_visible_h, AstUnion(a', b')
 
     | AstSelect(attributes, tables, selector, order, group, having, aggregates) ->
-      let headers_tables, tables = 
-        let headers, tables = tables
-                              |> List.map (check_relation headers)
-                              |> List.split 
+      let headers_tables, headers_visible_tables, tables = 
+        let headers, headers_visibles, tables = 
+          let m = tables
+                              |> List.map (check_relation headers headers_visible)
+          in let a, b, c = Utils.triple_split m
+          in a, b, c
         in merge_list Headers.join headers
+         , merge_list Headers.join headers_visibles
          , tables
       in let headers = Headers.join headers_tables headers
-      in let selector = Utils.option_map (check_cond headers) selector
+      in let headers_visible = Headers.join headers_visible_tables headers_visible
+      in let selector = Utils.option_map (check_cond headers headers_visible) selector
       in let attributes = List.map (check_select_attribute headers) attributes
-      in let headers, attributes = 
+      in let headers, headers_visible, attributes = 
         if attributes = [] then 
-          headers, List.map (fun at -> AstSeAttribute at) headers
+          headers, headers_visible, List.map (fun at -> AstSeAttribute at) headers
         else 
           let headers', attributes' = 
             attributes
@@ -75,22 +85,34 @@ let check_coherence query =
           |> List.fold_left (fun q h -> match h with
             | Some h' -> h' :: q
             | None -> q) []
-        in headers @ headers'', attributes'
+        in let headers_visible' =
+             attributes 
+             |> List.map (fun attribute ->
+                 match attribute with
+                 | AstSeRenamed(x, new_name) ->
+                   ("", new_name)
+                 | AstSeAttribute(at) ->
+                   at
+                 | AstSeExpr(expr) ->
+                   let new_name = new_uid_expr () |> string_of_int in
+                   ("", new_name)
+               )
+        in headers @ headers'', headers_visible', attributes'
       in let order =
            order
            |> Utils.option_map (List.map (fun (x, y) -> (check_expr headers x, y)))
       in let group =
            group
            |> Utils.option_map (List.map (check_expr headers))
-      in let having = Utils.option_map (check_cond headers) having
-      in headers, AstSelect(attributes, tables, selector, order, group, having, aggregates)
+      in let having = Utils.option_map (check_cond headers headers_visible) having
+      in headers, headers_visible, AstSelect(attributes, tables, selector, order, group, having, aggregates)
 
-  and check_relation headers relation = 
-    let headers, ast =
+  and check_relation (headers : attribute list) (headers_visible : attribute list) relation =
+    let headers, headers_visible, ast =
       match fst relation with
       | AstSubQuery x ->
-        let a, b = check_query headers x in
-        a, AstSubQuery b
+        let a, h, b = check_query headers headers_visible x in
+        a, h, AstSubQuery b
       | AstTable name ->
         let headers = 
           try
@@ -99,14 +121,15 @@ let check_coherence query =
           with e ->
             raise (Errors.SemanticError (Printf.sprintf "error: file \"%s\" doesn't exists" name)) 
         in
-        headers, AstTable name
+        headers, headers, AstTable name
       | AstCompiled x ->
-        [], AstCompiled x
+        [], [], AstCompiled x
     in List.map (fun (_, c) -> snd relation, c) headers, 
+       List.map (fun (_, c) -> snd relation, c) headers_visible, 
        (ast, snd relation)
 
-  and check_cond headers cond = 
-    let c_c = check_cond headers in 
+  and check_cond (headers : attribute list) (headers_visible : attribute list) cond = 
+    let c_c = check_cond headers headers_visible in 
     let c_e = check_expr headers in
     match cond with
     | AstBinOp(op, a, b) ->
@@ -114,14 +137,14 @@ let check_coherence query =
     | AstCompOp(op, a, b) ->
       AstCompOp(op, c_e a, c_e b)
     | AstIn(e, sub) ->
-      let h, sub = check_query headers sub
+      let _, h, sub = check_query headers headers_visible sub
       in let _ = print_endline @@ String.concat " " (List.map Debug.string_of_header h)
       in if List.length h != 1 then
         raise (Errors.SemanticError "the subquery inside a 'in' must have only one row")
       else 
         AstIn(c_e e, sub)
     | AstNotIn(e, sub) ->
-      let h, sub = check_query headers sub
+      let _, h, sub = check_query headers headers_visible sub
       in if List.length h != 1 then
         raise (Errors.SemanticError "the subquery inside a 'not in' must have only one row")
       else 
@@ -165,7 +188,8 @@ let check_coherence query =
     | Attribute attr -> Attribute (check_attribute headers attr)
     | x -> x
 
-  in snd @@ check_query [] query
+  in let _, _, q = check_query [] [] query
+  in q
 
 
 module Env = Map.Make(struct

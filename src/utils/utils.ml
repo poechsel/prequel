@@ -20,6 +20,13 @@ let list_filter_and_map fct l =
       end
   in aux l []
 
+let triple_split l = 
+  let rec aux l a b c = 
+  match l with
+    | [] -> List.rev a, List.rev b, List.rev c
+    | (x, y, z)::tl ->
+      aux tl (x::a) (y::b) (z::c)
+  in aux l [] [] []
     
 
 
