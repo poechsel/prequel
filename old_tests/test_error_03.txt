@@ -1,1 +1,0 @@
-(SELECT * FROM "departements.csv" e) UNION (SELECT * FROM "employes.csv" e)

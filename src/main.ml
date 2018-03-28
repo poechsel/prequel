@@ -148,10 +148,10 @@ let () =
     "--output", Arg.Set_string output, "A file in which to write the output.";
     "--graph", Arg.Set_string graph, "A file in which to save a graph of the term.";
     "--use-caching", Arg.Set opti.use_caching, "Enable caching optimization.";
-    "--no-select-push-down", Arg.Set opti.no_select_pd, "Disable push down of selections";
-    "--no-projection-opti", Arg.Set opti.no_projections, "Disable optimisations of projections";
-    "--no-joins", Arg.Set opti.no_joins, "Disable joins creations";
-    "--big-data", Arg.Set opti.big_data, "Use algorithms suited for large datasets";
+    "--no-select-push-down", Arg.Set opti.no_select_pd, "Disable push down of selections.";
+    "--no-projection-opti", Arg.Set opti.no_projections, "Disable optimisations of projections.";
+    "--no-joins", Arg.Set opti.no_joins, "Disable the use of joins.";
+    "--big-data", Arg.Set opti.big_data, "Use algorithms suited for large datasets.";
   ] in
 
   Arg.parse speclist ((:=) path) usage;

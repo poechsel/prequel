@@ -5,23 +5,23 @@ open Errors
 open MetaQuery
 
 
-type optimizations =
-  { use_caching : bool ref;
-    no_select_pd : bool ref;
-    no_projections : bool ref;
-    no_joins : bool ref;
-    big_data : bool ref;
-  }
+type optimizations = {
+  use_caching : bool ref;
+  no_select_pd : bool ref;
+  no_projections : bool ref;
+  no_joins : bool ref;
+  big_data : bool ref; }
 
 
-let make_optimizations () = 
-  {
+(** make_optimizations : unit -> optimizations
+    Creates a default set of optimisation options. *)
+let make_optimizations () = {
     use_caching = ref false;
     no_select_pd = ref false;
     no_projections = ref false;
     no_joins = ref false;
-    big_data = ref false;
-  }
+    big_data = ref false; }
+
 
 (** parse_input : in_channel -> Command.t
     Attemps to parse a command from the standard input. *)

@@ -1,1 +1,0 @@
-(SELECT * FROM "departements.csv" e) minus (SELECT * FROM "departements.csv" e where e.idd < 5)

@@ -1,1 +1,0 @@
-SELECT * FROM "departements.csv" e, "departements.csv" b
