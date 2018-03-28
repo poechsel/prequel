@@ -5,6 +5,10 @@ open OUnit2
 open Csv
 
 
+(* An absolute path to the `tests/` directory. *)
+let tests_dir = (Filename.dirname Sys.executable_name) ^ "/tests/"
+
+
 (** list_files : unit -> (string, in_channel) list
     Returns a list of all the test files, contained
     in the subfolders of the `tests/` directory. *)
@@ -24,7 +28,7 @@ let list_files () =
     | x :: xs -> aux acc xs
     | [] -> acc in
 
-  aux [] ["tests"]
+  aux [] [tests_dir]
 
 
 (** The different modes for checking whether the
@@ -142,8 +146,9 @@ let make_case file =
 
     let buffer = Lexing.from_string query in
     let command = Parser.main Lexer.token buffer in
+    let basedir = tests_dir ^ "sources/" in
     begin match command with
-      | Query q -> Common.run_query ~output:temp_chan q
+      | Query q -> Common.run_query ~basedir ~output:temp_chan q
       | _       -> assert_failure "Not a valid SQL query."
     end;
 
@@ -156,4 +161,5 @@ let () =
   let cases = list_files ()
     |> List.map (fun (name, file) -> name >:: make_case file) in
   let suite = "suite" >::: cases in
+
   run_test_tt_main suite

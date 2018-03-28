@@ -1,4 +1,4 @@
-SELECT 3 * 2 FROM "tests/sources/departements.csv" AS depts;
+SELECT 3 * 2 FROM "departements.csv" AS depts;
 
 [normal]
 1

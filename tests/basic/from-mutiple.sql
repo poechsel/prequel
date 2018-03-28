@@ -1,7 +1,7 @@
 SELECT  projs.idp, depts.idd
 FROM 
-	"tests/sources/departements.csv" depts, 
-	"tests/sources/projets.csv" projs;
+	"departements.csv" depts, 
+	"projets.csv" projs;
 
 [normal]
 idp, idd

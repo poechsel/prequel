@@ -1,6 +1,6 @@
-(SELECT * FROM "tests/sources/departements.csv" e WHERE e.idd > 2)
+(SELECT * FROM "departements.csv" e WHERE e.idd > 2)
 MINUS
-(SELECT * FROM "tests/sources/departements.csv" e WHERE e.idd > 5);
+(SELECT * FROM "departements.csv" e WHERE e.idd > 5);
 
 [normal]
 idd, nom, directeur

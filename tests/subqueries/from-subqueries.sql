@@ -1,6 +1,6 @@
 SELECT depts1.idd, depts2.idd FROM
-	(SELECT depts.idd FROM "tests/sources/departements.csv" AS depts) AS depts1,
-	(SELECT depts.idd FROM "tests/sources/departements.csv" AS depts) AS depts2;
+	(SELECT depts.idd FROM "departements.csv" AS depts) AS depts1,
+	(SELECT depts.idd FROM "departements.csv" AS depts) AS depts2;
 
 [normal]
 idd, idd

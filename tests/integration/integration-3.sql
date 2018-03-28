@@ -1,7 +1,7 @@
 SELECT e.nom AS emp, d.nom AS dpt
 FROM
-	"tests/sources/employes.csv" e,
-	"tests/sources/departements.csv" d
+	"employes.csv" e,
+	"departements.csv" d
 WHERE e.dpt = d.idd;
 
 [normal]

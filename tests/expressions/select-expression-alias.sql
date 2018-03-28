@@ -1,4 +1,4 @@
-SELECT depts.idd * 2 AS expr FROM "tests/sources/departements.csv" AS depts;
+SELECT depts.idd * 2 AS expr FROM "departements.csv" AS depts;
 
 [normal]
 expr

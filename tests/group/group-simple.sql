@@ -1,4 +1,4 @@
-SELECT * FROM "tests/sources/projets.csv" proj GROUP BY proj.responsable;
+SELECT * FROM "projets.csv" proj GROUP BY proj.responsable;
 
 [normal]
 idp, titre, responsable

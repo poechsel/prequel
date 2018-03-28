@@ -1,4 +1,4 @@
-SELECT * FROM "tests/sources/departements.csv" depts
+SELECT * FROM "departements.csv" depts
 ORDER BY depts.directeur;
 
 [ordered]

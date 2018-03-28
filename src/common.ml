@@ -55,7 +55,12 @@ let run_query
     ?output:(output=stdout) 
     ?graph:(graph=None) 
     ?opti:(opti=make_optimizations ()) 
+    ?basedir:(basedir=".")
     query =
+  (* Set the correct working directory. *)
+  let cwd' = Sys.getcwd () in
+  Sys.chdir basedir;
+
   let algebra =
     query
     |> AstChecker.check_coherence
@@ -103,4 +108,7 @@ let run_query
   else begin
     feed#save output;
     flush output
-  end
+  end;
+
+  (* Restore the previous working directory. *)
+  Sys.chdir cwd'

@@ -1,6 +1,6 @@
-SELECT * FROM "tests/sources/employes.csv" AS employes
+SELECT * FROM "employes.csv" AS employes
 WHERE employes.dpt NOT IN (
-	SELECT depts.idd FROM "tests/sources/departements.csv" depts
+	SELECT depts.idd FROM "departements.csv" depts
 	WHERE depts.idd > 2
 );
 

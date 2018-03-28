@@ -1,5 +1,5 @@
 SELECT proj.responsable, COUNT(proj.idp) AS m
-FROM "tests/sources/projets.csv" proj GROUP BY proj.responsable
+FROM "projets.csv" proj GROUP BY proj.responsable
 HAVING m > 1;
 
 [normal]

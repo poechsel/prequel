@@ -1,4 +1,4 @@
-SELECT * FROM "tests/sources/projets.csv" proj
+SELECT * FROM "projets.csv" proj
 ORDER BY proj.responsable ASC, proj.idp DESC;
 
 [ordered]

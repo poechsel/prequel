@@ -1,4 +1,4 @@
-SELECT depts.idd, depts.nom FROM "tests/sources/departements.csv" AS depts;
+SELECT depts.idd, depts.nom FROM "departements.csv" AS depts;
 
 [normal]
 idd,nom

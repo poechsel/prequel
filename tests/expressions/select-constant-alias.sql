@@ -1,4 +1,4 @@
-SELECT 1 AS cst FROM "tests/sources/departements.csv" AS depts;
+SELECT 1 AS cst FROM "departements.csv" AS depts;
 
 [normal]
 cst

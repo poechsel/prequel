@@ -1,10 +1,10 @@
 SELECT e.dpt, e.nom
-FROM "tests/sources/employes.csv" e
+FROM "employes.csv" e
 WHERE e.dpt IN (
 	SELECT s.dpt
 	FROM
-		"tests/sources/employes.csv" s,
-		"tests/sources/departements.csv" ds
+		"employes.csv" s,
+		"departements.csv" ds
 	WHERE
 		ds.directeur = s.ide AND
 		e.dpt = ds.idd

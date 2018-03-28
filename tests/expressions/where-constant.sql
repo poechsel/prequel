@@ -1,4 +1,4 @@
-SELECT * FROM "tests/sources/departements.csv" AS depts
+SELECT * FROM "departements.csv" AS depts
 WHERE 1 = 1;
 
 [normal]

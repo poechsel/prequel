@@ -1,11 +1,11 @@
 SELECT p.titre, e.nom
-FROM "tests/sources/employes.csv" e, "tests/sources/projets.csv" p, "tests/sources/membres.csv" m
+FROM "employes.csv" e, "projets.csv" p, "membres.csv" m
 WHERE
 	e.ide = m.ide AND
 	m.idp = p.idp AND
 	e.dpt NOT IN (
 		SELECT r.dpt
-		FROM "tests/sources/employes.csv" r
+		FROM "employes.csv" r
 		WHERE r.ide = p.responsable
 	);
 

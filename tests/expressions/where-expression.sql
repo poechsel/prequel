@@ -1,4 +1,4 @@
-SELECT * FROM "tests/sources/departements.csv" AS depts
+SELECT * FROM "departements.csv" AS depts
 WHERE (depts.idd - 1) = 2 * (depts.idd - 1);
 
 [normal]
